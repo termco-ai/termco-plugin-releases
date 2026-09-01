@@ -4,7 +4,7 @@
   "name": "Default Application Header",
   "description": "Owns the complete default title bar, workspace strip, command/search field, agent activity, window actions, and tab strip.",
   "category": "Interface",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": { "renderer": "src/renderer.tsx" },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.0",

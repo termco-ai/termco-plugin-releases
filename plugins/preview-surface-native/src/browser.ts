@@ -77,6 +77,8 @@ export class BrowserClient {
   destroy(tabId: number) { this.states.delete(tabId); this.console.delete(tabId); this.network.delete(tabId); this.#notify(); return this.invoke("browser_destroy", { tabId }); }
   setBounds(tabId: number, bounds: BrowserRect) { return this.invoke("browser_set_bounds", { tabId, bounds }); }
   setVisible(tabId: number, visible: boolean) { return this.invoke("browser_set_visible", { tabId, visible }); }
+  setOverlayMode(tabId: number, overlay: boolean) { return this.invoke("browser_set_overlay_mode", { tabId, overlay }); }
+  forwardInput(tabId: number, event: Record<string, unknown>) { return this.invoke("browser_forward_input", { tabId, event }); }
   loadUrl(tabId: number, url: string) { return this.invoke("browser_load_url", { tabId, url }); }
   focus(tabId: number) { return this.invoke("browser_focus", { tabId }); }
   focusHost() { return this.invoke("browser_focus_host"); }

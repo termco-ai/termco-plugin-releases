@@ -4,7 +4,7 @@
   "name": "Workspace Explorer",
   "description": "Owns the complete file explorer tree, search, refresh, create, rename, delete, drag-to-move, terminal reveal, AI attachment, icon, and command workflow.",
   "category": "Workspace interface",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": { "renderer": "src/renderer.tsx" },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.0",

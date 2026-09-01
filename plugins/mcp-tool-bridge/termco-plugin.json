@@ -4,7 +4,7 @@
   "name": "MCP Tool Bridge",
   "description": "Publishes the application tool surface to the shared MCP server and routes tool requests, approvals, and managed-run interactions through the active renderer.",
   "category": "AI",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": { "renderer": "src/renderer.tsx" },
   "dependencies": {
     "@termco/ai-live-base": "1.0.0",

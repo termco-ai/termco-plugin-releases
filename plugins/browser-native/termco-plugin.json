@@ -4,7 +4,7 @@
   "name": "Embedded Browser",
   "description": "Owns shared embedded browser views, persistent sessions, accessibility snapshots, CDP automation, screenshots, console, and network observation.",
   "category": "Application providers",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
   "dependencies": {
     "@termco/browser-base": "1.0.0",

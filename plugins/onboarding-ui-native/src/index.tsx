@@ -265,6 +265,7 @@ export function AutomaticOffer({
   return (
     <section
       aria-label="Getting started"
+      data-termco-overlay="true"
       className="fixed right-5 bottom-9 z-[89] w-[min(390px,calc(100vw-40px))] rounded-xl border border-border bg-card p-4 text-card-foreground shadow-[0_18px_55px_rgba(0,0,0,0.28)]"
       data-testid="onboarding-offer"
     >
@@ -419,7 +420,11 @@ function CoachMark({ runtime }: { runtime: OnboardingRuntime }) {
   const position = coachPosition(rect, coachSize, placement);
 
   return (
-    <div className="pointer-events-none fixed inset-0 z-[90]" data-testid="onboarding-coach-mark">
+    <div
+      className="pointer-events-none fixed inset-0 z-[90]"
+      data-termco-overlay="true"
+      data-testid="onboarding-coach-mark"
+    >
       {rect ? (
         <>
           <div className="fixed inset-x-0 top-0 bg-black/55" style={{ height: Math.max(0, rect.top - 6) }} />

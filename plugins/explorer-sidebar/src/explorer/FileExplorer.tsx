@@ -402,6 +402,7 @@ export const FileExplorer = memo(
         {dnd.dragLabel ? (
           <div
             ref={dnd.ghostRef}
+            data-termco-overlay="true"
             className="pointer-events-none fixed left-0 top-0 z-50 flex items-center gap-1.5 rounded-[6px] border border-border/70 bg-card/95 px-2 py-1 text-xs text-foreground shadow-[var(--shadow-popover)]"
           >
             {dnd.dragLabel}

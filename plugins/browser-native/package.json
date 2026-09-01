@@ -1,6 +1,6 @@
 {
   "name": "@termco-plugin/browser-native",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "private": true,
   "type": "module",
   "dependencies": { "electron": "^40.4.0" }

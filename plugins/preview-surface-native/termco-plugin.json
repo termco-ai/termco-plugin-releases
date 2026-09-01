@@ -4,7 +4,7 @@
   "name": "Web Preview",
   "description": "Owns embedded-browser tabs, navigation UI, page state, console and network views, shortcuts, popups, and AI element capture.",
   "category": "Interface",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "entrypoints": {
     "renderer": "src/index.tsx"
   },

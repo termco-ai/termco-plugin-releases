@@ -7,7 +7,11 @@
  * never take the app down: every handler is scoped to its view, and views are
  * torn down explicitly on tab close, host reload, and window close.
  */
-import { WebContentsView, type BrowserWindow } from "electron";
+import {
+  WebContentsView,
+  type BrowserWindow,
+  type WebContents,
+} from "electron";
 import { emitBrowserEvent } from "./events";
 import { detachCdp, ensureCdp } from "./cdp";
 import { startObserving, stopObserving } from "./observe";
@@ -146,7 +150,11 @@ function wireEvents(entry: Entry): void {
 }
 
 /** Attach once-per-window teardown: window closed + host renderer reload. */
-function hookWindow(win: BrowserWindow, label: string): void {
+function hookWindow(
+  win: BrowserWindow,
+  renderer: WebContents | undefined,
+  label: string,
+): void {
   if (hookedWindows.has(label)) return;
   hookedWindows.add(label);
   win.on("closed", () => {
@@ -156,12 +164,15 @@ function hookWindow(win: BrowserWindow, label: string): void {
   // A full host reload (Vite dev reload, prod re-navigation) discards the
   // renderer's view bookkeeping; drop the orphaned views — the renderer
   // re-creates them for warm tabs on boot.
-  win.webContents.on("did-navigate", () => destroyAllForWindow(label));
+  (renderer ?? win.webContents).on("did-navigate", () =>
+    destroyAllForWindow(label),
+  );
 }
 
 /** Create (idempotently) the view for a tab. Starts hidden; renderer shows it. */
 export function createView(
   win: BrowserWindow,
+  renderer: WebContents | undefined,
   label: string,
   tabId: number,
   url: string,
@@ -203,7 +214,7 @@ export function createView(
   };
   entries.set(viewKey(label, tabId), entry);
 
-  hookWindow(win, label);
+  hookWindow(win, renderer, label);
   wireEvents(entry);
 
   win.contentView.addChildView(view);

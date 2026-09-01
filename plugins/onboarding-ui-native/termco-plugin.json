@@ -4,7 +4,7 @@
   "name": "Onboarding Experience",
   "description": "Owns the replayable onboarding checklist, accessible coach marks, semantic target spotlight, and Help command.",
   "category": "Interface",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": {
     "renderer": "src/index.tsx"
   },

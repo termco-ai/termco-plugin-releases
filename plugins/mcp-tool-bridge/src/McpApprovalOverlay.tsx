@@ -30,6 +30,7 @@ export function McpApprovalOverlay({
 
   return (
     <div
+      data-termco-overlay="true"
       data-testid="mcp-approval-overlay"
       style={{ WebkitAppRegion: "no-drag" } as React.CSSProperties}
       className="pointer-events-none fixed inset-x-0 bottom-4 z-[999] flex flex-col items-center gap-2 px-4"

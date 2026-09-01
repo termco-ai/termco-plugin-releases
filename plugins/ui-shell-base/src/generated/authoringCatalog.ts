@@ -130,7 +130,7 @@ export const UI_CONTRIBUTION_AUTHORING_DESCRIPTORS = [
       "postcondition": "the exact owned overlay is visible and its declared interaction reaches the expected state"
     },
     "reveal": "overlay",
-    "minimalUsage": "inject UI_OVERLAYS_SERVICE and lifecycle-own UiOverlayRegistry.register through context.effect with context.pluginId and context.generation"
+    "minimalUsage": "inject UI_OVERLAYS_SERVICE and lifecycle-own UiOverlayRegistry.register through context.effect with context.pluginId and context.generation; use shared @termco/ui floating primitives, or mark a custom floating root with data-termco-overlay=true or useOverlayGuard(ref), so it renders above live native browser surfaces"
   },
   {
     "service": "ui.providers",

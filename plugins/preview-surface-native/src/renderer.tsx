@@ -31,6 +31,9 @@ import {
 } from "./model";
 
 const { Input } = ui;
+const LIVE_BROWSER_LAYER =
+  typeof window !== "undefined" &&
+  new URLSearchParams(window.location.search).get("liveBrowserLayer") === "1";
 const {
   forwardRef,
   useEffect,
@@ -113,7 +116,7 @@ function useBrowserView(
   }, [localOverlay, runtime]);
 
   const showable = visible && hasSize && Boolean(initialUrl) && !state?.crashed && !state?.loadError;
-  const effectiveVisible = showable && !overlayCovers;
+  const effectiveVisible = showable && (LIVE_BROWSER_LAYER || !overlayCovers);
   useEffect(() => {
     if (effectiveVisible && hostRef.current) {
       const rect = measure(hostRef.current);
@@ -125,11 +128,16 @@ function useBrowserView(
     void client.setVisible(tabId, effectiveVisible);
   }, [client, effectiveVisible, tabId]);
 
+  useEffect(() => {
+    if (!LIVE_BROWSER_LAYER) return;
+    void client.setOverlayMode(tabId, showable && overlayCovers);
+  }, [client, overlayCovers, showable, tabId]);
+
   return {
     hostRef,
     state,
     navigate: (url: string) => client.loadUrl(tabId, url),
-    overlayHidden: showable && overlayCovers,
+    overlayHidden: !LIVE_BROWSER_LAYER && showable && overlayCovers,
   };
 }
 
@@ -229,13 +237,76 @@ function IconButton({ title, icon, disabled, active, badge, size = 14, onClick }
   return <button type="button" title={title} disabled={disabled} onClick={onClick} className={`${buttonClass} relative ${active ? "bg-accent text-foreground" : ""}`}><HugeiconsIcon icon={icon as never} size={size} strokeWidth={1.75} />{badge ? <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-destructive px-0.5 text-[10px] text-white">{badge > 99 ? "99+" : badge}</span> : null}</button>;
 }
 
-function ViewHost({ hostRef, url, state, overlayHidden, reload }: { hostRef: { current: HTMLDivElement | null }; url: string; state: BrowserTabState | null; overlayHidden: boolean; reload(): void }) {
+function ViewHost({ client, tabId, hostRef, url, state, overlayHidden, reload }: { client: BrowserClient; tabId: number; hostRef: { current: HTMLDivElement | null }; url: string; state: BrowserTabState | null; overlayHidden: boolean; reload(): void }) {
+  const moveFrame = useRef(0);
+  const pendingMove = useRef<Record<string, unknown> | null>(null);
+  useEffect(() => () => {
+    if (moveFrame.current) cancelAnimationFrame(moveFrame.current);
+  }, []);
   let fallback: unknown = null;
   if (overlayHidden) fallback = <Fallback icon={EyeIcon} title="Page hidden while a menu is open" />;
   else if (!url) fallback = <div className="flex h-full w-full flex-col items-center justify-center gap-5 px-6 text-center"><div className="flex size-12 items-center justify-center rounded-xl bg-primary/10 text-primary"><HugeiconsIcon icon={Globe02Icon} size={26} strokeWidth={1.5} /></div><div className="space-y-1.5"><p className="text-base font-semibold text-foreground">Nothing to preview yet</p><p className="max-w-md text-sm leading-relaxed text-muted-foreground">Type a URL above, or open the <span className="rounded-md bg-accent px-1.5 py-0.5 font-mono text-xs">Ports</span> dropdown to jump straight to your running dev server. Public sites often block embedding — open them in your browser via the link icon if you see a blank page.</p></div></div>;
   else if (state?.crashed) fallback = <Fallback icon={Alert02Icon} title="This page crashed" detail={`The page renderer exited (${state.crashed}).`} action={reload} />;
   else if (state?.loadError) fallback = <Fallback icon={Alert02Icon} title="This page failed to load" detail={`${state.loadError.description} (${state.loadError.code}) — ${state.loadError.url}`} action={reload} />;
-  return <div ref={hostRef} className="relative min-h-0 flex-1 bg-background">{fallback as never}</div>;
+  const point = (event: { clientX: number; clientY: number }) => {
+    const rect = hostRef.current?.getBoundingClientRect();
+    return {
+      x: Math.round(event.clientX - (rect?.left ?? 0)),
+      y: Math.round(event.clientY - (rect?.top ?? 0)),
+    };
+  };
+  const button = (value: number) => value === 1 ? "middle" : value === 2 ? "right" : "left";
+  const modifiers = (event: { shiftKey: boolean; ctrlKey: boolean; altKey: boolean; metaKey: boolean; buttons: number }) => [
+    ...(event.shiftKey ? ["shift"] : []),
+    ...(event.ctrlKey ? ["control"] : []),
+    ...(event.altKey ? ["alt"] : []),
+    ...(event.metaKey ? ["meta"] : []),
+    ...(event.buttons & 1 ? ["leftbuttondown"] : []),
+    ...(event.buttons & 4 ? ["middlebuttondown"] : []),
+    ...(event.buttons & 2 ? ["rightbuttondown"] : []),
+  ];
+  const pointerPayload = (type: "mouseDown" | "mouseUp" | "mouseMove", event: { clientX: number; clientY: number; button: number; buttons: number; detail: number; shiftKey: boolean; ctrlKey: boolean; altKey: boolean; metaKey: boolean }) => ({
+    type,
+    ...point(event),
+    button: button(event.button),
+    clickCount: Math.max(1, event.detail || 1),
+    modifiers: modifiers(event),
+  });
+  const forwardPointer = (type: "mouseDown" | "mouseUp", event: Parameters<typeof pointerPayload>[1]) => {
+    if (!LIVE_BROWSER_LAYER) return;
+    void client.forwardInput(tabId, pointerPayload(type, event));
+  };
+  const forwardPointerMove = (event: Parameters<typeof pointerPayload>[1]) => {
+    if (!LIVE_BROWSER_LAYER) return;
+    pendingMove.current = pointerPayload("mouseMove", event);
+    if (moveFrame.current) return;
+    moveFrame.current = requestAnimationFrame(() => {
+      moveFrame.current = 0;
+      const payload = pendingMove.current;
+      pendingMove.current = null;
+      if (payload) void client.forwardInput(tabId, payload);
+    });
+  };
+  return <div
+    ref={hostRef}
+    data-live-browser-hole={LIVE_BROWSER_LAYER ? "true" : undefined}
+    className={`relative min-h-0 flex-1 ${LIVE_BROWSER_LAYER ? "bg-transparent" : "bg-background"}`}
+    onPointerDown={(event) => forwardPointer("mouseDown", event)}
+    onPointerUp={(event) => forwardPointer("mouseUp", event)}
+    onPointerMove={forwardPointerMove}
+    onWheel={(event) => {
+      if (!LIVE_BROWSER_LAYER) return;
+      void client.forwardInput(tabId, {
+        type: "mouseWheel",
+        ...point(event),
+        deltaX: event.deltaX,
+        deltaY: event.deltaY,
+        canScroll: true,
+        hasPreciseScrollingDeltas: event.deltaMode === WheelEvent.DOM_DELTA_PIXEL,
+        modifiers: modifiers(event),
+      });
+    }}
+  >{fallback as never}</div>;
 }
 
 function Fallback({ icon, title, detail, action }: { icon: unknown; title: string; detail?: string; action?: () => void }) {
@@ -274,9 +345,9 @@ const PreviewPane = forwardRef<PaneHandle, { client: BrowserClient; desktop: Des
   useEffect(() => {
     if (browser.state?.title && browser.state.title !== tab.title) runtime.updateTab(tab.id, { title: browser.state.title });
   }, [browser.state?.title, runtime, tab.id, tab.title]);
-  return <div className="flex h-full w-full flex-col overflow-hidden bg-background" style={{ visibility: visible ? "visible" : "hidden", pointerEvents: visible ? "auto" : "none" }}>
+  return <div className={`flex h-full w-full flex-col overflow-hidden ${LIVE_BROWSER_LAYER ? "bg-transparent" : "bg-background"}`} style={{ visibility: visible ? "visible" : "hidden", pointerEvents: visible ? "auto" : "none" }}>
     <AddressBar ref={address} client={client} desktop={desktop} runtime={runtime} tabId={tab.id} url={tab.url ?? ""} state={browser.state} onNavigate={(url) => { void browser.navigate(url); void client.focus(tab.id); }} onMenu={setMenuOpen} onToggleDev={() => setDevOpen((open) => !open)} devOpen={devOpen} errorCount={logs.filter((entry) => entry.level === "error").length} />
-    <ViewHost hostRef={browser.hostRef} url={tab.url ?? ""} state={browser.state} overlayHidden={browser.overlayHidden} reload={() => void client.reload(tab.id)} />
+    <ViewHost client={client} tabId={tab.id} hostRef={browser.hostRef} url={tab.url ?? ""} state={browser.state} overlayHidden={browser.overlayHidden} reload={() => void client.reload(tab.id)} />
     {devOpen ? <div className="h-2/5 min-h-[120px] shrink-0"><DevPanel client={client} tabId={tab.id} close={() => setDevOpen(false)} /></div> : null}
   </div>;
 });

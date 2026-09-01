@@ -42,6 +42,9 @@ export function NewEditorDialog({
   const [name, setName] = useState("untitled.txt");
   const [error, setError] = useState<string | null>(null);
   const inputRef = useRef<HTMLInputElement>(null);
+  const previewPath = rootPath
+    ? joinPath(rootPath, name.trim() || "…")
+    : "—";
 
   useEffect(() => {
     if (!open) return;
@@ -89,13 +92,13 @@ export function NewEditorDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="min-w-0 grid-cols-[minmax(0,1fr)] overflow-x-hidden sm:max-w-md">
         <DialogHeader>
           <div className="flex items-start gap-3">
             <span className="grid size-8 shrink-0 place-items-center rounded-lg bg-[var(--signal-soft)] text-primary">
               <HugeiconsIcon icon={File02Icon} size={15} strokeWidth={1.75} />
             </span>
-            <div>
+            <div className="min-w-0">
               <DialogTitle>New workspace file</DialogTitle>
               <DialogDescription className="mt-1">
                 Use a path relative to the workspace root. The extension sets
@@ -104,7 +107,7 @@ export function NewEditorDialog({
             </div>
           </div>
         </DialogHeader>
-        <label className="flex flex-col gap-1.5 text-xs font-medium text-foreground">
+        <label className="flex min-w-0 flex-col gap-1.5 text-xs font-medium text-foreground">
           File path
           <Input
             ref={inputRef}
@@ -125,12 +128,18 @@ export function NewEditorDialog({
         {error ? (
           <div className="text-xs text-destructive">{error}</div>
         ) : (
-          <div className="rounded-lg border border-border/70 bg-muted/25 px-3 py-2">
+          <div className="min-w-0 rounded-lg border border-border/70 bg-muted/25 px-3 py-2">
             <p className="text-xs font-medium text-muted-foreground">
               Will create
             </p>
-            <p className="mt-0.5 truncate font-mono text-xs text-foreground">
-              {rootPath ? joinPath(rootPath, name.trim() || "…") : "—"}
+            <p
+              role="region"
+              aria-label="Full file path"
+              tabIndex={0}
+              title={previewPath}
+              className="mt-0.5 min-w-0 overflow-x-auto overscroll-x-contain whitespace-nowrap pb-1 font-mono text-xs text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring/35"
+            >
+              {previewPath}
             </p>
           </div>
         )}

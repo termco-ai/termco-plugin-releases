@@ -14,6 +14,12 @@ describe("built-in AI library agents", () => {
         preferredToolGroups: ["plugin-dev", "files"],
       }),
     );
+    const pluginCreator = BUILTIN_AGENTS.find(
+      (agent) => agent.id === "builtin:plugin-creator",
+    );
+    expect(pluginCreator?.instructions).toContain('data-termco-overlay="true"');
+    expect(pluginCreator?.instructions).toContain("useOverlayGuard(ref)");
+    expect(pluginCreator?.instructions).toContain("never use a browser screenshot");
     for (const agent of BUILTIN_AGENTS) {
       expect(agent.instructions.trim(), agent.id).not.toBe("");
     }

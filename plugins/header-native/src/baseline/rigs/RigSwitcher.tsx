@@ -260,6 +260,7 @@ export function RigSwitcher({
         (draggedRig || draggedTab) &&
         createPortal(
           <div
+            data-termco-overlay="true"
             className="pointer-events-none fixed z-[60]"
             style={{ left: overlay.x + 12, top: overlay.y + 8 }}
           >

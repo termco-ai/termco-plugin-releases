@@ -4,7 +4,7 @@
   "name": "Editor Surface",
   "description": "Owns editor tabs, CodeMirror integration, language loading, LSP presentation, formatting, file synchronization, binary previews, and new-file UI while sharing application-wide file, LSP, theme, preference, event, and inference providers.",
   "category": "Editor",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": { "renderer": "src/renderer.tsx" },
   "dependencies": {
     "@codemirror/autocomplete": "^6.20.3",
