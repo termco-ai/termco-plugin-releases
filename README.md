@@ -39,8 +39,10 @@ scripts/                  Deterministic signed release builder
 host-runtime-packages.json Packages supplied by the compatible Termco host
 ```
 
-Each executable plugin owns its manifest, package metadata, tests, README, and
-`AGENTS.md`. Contract packages end in `-base`; they describe the stable seam
+Each executable plugin owns its manifest, package metadata, tests, README,
+optional `CHANGELOG.md`, and `AGENTS.md`. The README is the stable guide to what
+the plugin does; the changelog records user-facing changes by exact plugin
+version. Contract packages end in `-base`; they describe the stable seam
 between independently released plugins and the host. `AGENTS.md` remains in
 source for maintainers and coding agents but is deliberately excluded from the
 downloadable archive because it is not a runtime input.
@@ -51,6 +53,22 @@ Plugin versions use `major.minor.patch`. Change the plugin source and increment
 its manifest version. A push to `main` validates the repository and publishes a
 complete signed snapshot. Complete snapshots let a fresh Termco installation
 start directly from the latest release without replaying historical deltas.
+
+For user-visible changes, add an exact version entry to the plugin's
+`CHANGELOG.md`:
+
+```markdown
+# Changelog
+
+## 1.2.0
+
+Explains the user-visible change and why it matters.
+```
+
+The release builder uses that exact entry as the plugin's release note. An
+explicit release-notes file still takes precedence for exceptional releases;
+plugins without a matching changelog entry fall back to their manifest
+description so existing plugins can adopt changelogs incrementally.
 
 The workflow requires:
 

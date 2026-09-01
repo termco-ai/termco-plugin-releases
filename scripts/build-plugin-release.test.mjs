@@ -5,7 +5,29 @@ import { tmpdir } from "node:os";
 import { join } from "node:path";
 import test from "node:test";
 import { unzipSync } from "fflate";
-import { buildPluginRelease, canonicalJson } from "./build-plugin-release.mjs";
+import {
+  buildPluginRelease,
+  canonicalJson,
+  changelogNotes,
+} from "./build-plugin-release.mjs";
+
+test("extracts notes for one exact plugin version", () => {
+  const changelog = [
+    "# Changelog",
+    "",
+    "## [1.1.0] - 2026-09-01",
+    "",
+    "Adds the current behavior.",
+    "",
+    "## 1.0.0",
+    "",
+    "Initial release.",
+  ].join("\n");
+
+  assert.equal(changelogNotes(changelog, "1.1.0"), "Adds the current behavior.");
+  assert.equal(changelogNotes(changelog, "1.0.0"), "Initial release.");
+  assert.equal(changelogNotes(changelog, "2.0.0"), null);
+});
 
 test("release archives keep runtime source but omit AGENTS.md", async (t) => {
   const root = await fs.mkdtemp(join(tmpdir(), "termco-plugin-release-test-"));
@@ -19,6 +41,10 @@ test("release archives keep runtime source but omit AGENTS.md", async (t) => {
     ),
     fs.writeFile(join(pluginRoot, "AGENTS.md"), "# Maintainer-only context\n"),
     fs.writeFile(join(pluginRoot, "README.md"), "# Feature\n"),
+    fs.writeFile(
+      join(pluginRoot, "CHANGELOG.md"),
+      "# Changelog\n\n## 1.0.0\n\nAdds the release-test feature.\n",
+    ),
     fs.writeFile(
       join(pluginRoot, "package.json"),
       JSON.stringify({ name: "@termco/plugin-feature-native", private: true }),
@@ -55,6 +81,7 @@ test("release archives keep runtime source but omit AGENTS.md", async (t) => {
   );
   const entries = Object.keys(unzipSync(archive));
   assert.ok(entries.includes("plugins/feature-native/README.md"));
+  assert.ok(entries.includes("plugins/feature-native/CHANGELOG.md"));
   assert.ok(entries.includes("plugins/feature-native/src/renderer.ts"));
   assert.ok(!entries.includes("plugins/feature-native/AGENTS.md"));
 
@@ -63,6 +90,7 @@ test("release archives keep runtime source but omit AGENTS.md", async (t) => {
   );
   assert.equal(catalog.schemaVersion, 2);
   assert.equal(catalog.plugins.length, 1);
+  assert.equal(catalog.plugins[0].notes, "Adds the release-test feature.");
   assert.equal(catalog.plugins[0].artifact.assetName, "feature-native-1.0.0.zip");
   const pluginArchive = await fs.readFile(
     join(root, "artifacts", catalog.plugins[0].artifact.assetName),

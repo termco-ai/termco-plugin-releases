@@ -179,9 +179,35 @@ function normalizePrivateKey(value) {
   return value.includes("\\n") ? value.replaceAll("\\n", "\n") : value;
 }
 
-function notesFor(pluginId, manifest, notes) {
+export function changelogNotes(markdown, version) {
+  const lines = markdown.replaceAll("\r\n", "\n").split("\n");
+  const collected = [];
+  let collecting = false;
+  for (const line of lines) {
+    const heading = line.match(
+      /^##\s+\[?(\d+\.\d+\.\d+)\]?(?:\s+-[^\r\n]*)?\s*$/,
+    );
+    if (heading) {
+      if (collecting) break;
+      collecting = heading[1] === version;
+      continue;
+    }
+    if (collecting) collected.push(line);
+  }
+  const value = collected.join("\n").trim();
+  return value || null;
+}
+
+async function notesFor(pluginRoot, pluginId, manifest, notes) {
   const configured = notes?.[pluginId];
   if (typeof configured === "string") return configured;
+  try {
+    const changelog = await fs.readFile(join(pluginRoot, "CHANGELOG.md"), "utf8");
+    const current = changelogNotes(changelog, manifest.version);
+    if (current) return current;
+  } catch (error) {
+    if (error.code !== "ENOENT") throw error;
+  }
   return manifest.description;
 }
 
@@ -315,7 +341,7 @@ export async function buildPluginRelease(options) {
       id: pluginId,
       name: manifest.name,
       version: manifest.version,
-      notes: notesFor(pluginId, manifest, notes),
+      notes: await notesFor(pluginRoot, pluginId, manifest, notes),
     };
     const artifactBytes = zipSync(sourceFiles, { level: 9 });
     pluginArtifacts.push({
