@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-system-native",
+  "name": "AI Tools: System",
+  "description": "Lets AI notify the user, use the clipboard, inspect shared command history, and reveal paths through application-wide providers.",
+  "category": "AI",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/desktop-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

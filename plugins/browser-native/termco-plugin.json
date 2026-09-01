@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "browser-native",
+  "name": "Embedded Browser",
+  "description": "Owns shared embedded browser views, persistent sessions, accessibility snapshots, CDP automation, screenshots, console, and network observation.",
+  "category": "Application providers",
+  "version": "1.0.1",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/browser-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "electron": "^40.4.0"
+  },
+  "activation": "eager"
+}

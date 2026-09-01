@@ -1,0 +1,7 @@
+{
+  "name": "@termco-plugin/command-palette-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {}
+}

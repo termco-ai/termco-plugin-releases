@@ -1,0 +1,10 @@
+{
+  "name": "@termco-plugin/files-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@vscode/ripgrep": "^1.15.14",
+    "chokidar": "^4.0.3"
+  }
+}

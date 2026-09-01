@@ -1,0 +1,33 @@
+{
+  "schemaVersion": 3,
+  "id": "workflows-native",
+  "name": "Workflows",
+  "description": "Owns the shared categorized workflow library, persistence, authoring, searchable commands, run sheet, and AI-dock view.",
+  "category": "Automation",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/index.ts"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "@testing-library/react": "^16.3.2",
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "react": "^19.2.7",
+    "@termco/containers-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/git-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-commands-base": "1.0.0",
+    "@termco/ui-dock-base": "1.0.0",
+    "@termco/ui-overlays-base": "1.0.0",
+    "@termco/workflows-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

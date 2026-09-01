@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "company-example-statusbar",
+  "name": "Example Company Status Bar",
+  "description": "Example company-branded complete statusbar replacement that preserves extension slots.",
+  "category": "Company examples",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.tsx" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-statusbar-base": "1.0.0",
+    "@testing-library/react": "^16.3.2",
+    "react": "^19.2.7"
+  },
+  "activation": "eager",
+  "replaces": "statusbar-native"
+}

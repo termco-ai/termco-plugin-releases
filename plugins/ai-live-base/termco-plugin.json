@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-live-base",
+  "name": "AI Live Base",
+  "description": "Public AI Live service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

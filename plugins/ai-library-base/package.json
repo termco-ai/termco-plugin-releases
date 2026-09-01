@@ -1,0 +1,13 @@
+{
+  "name": "@termco/ai-library-base",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/mcp-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

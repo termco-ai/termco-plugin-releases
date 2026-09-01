@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 3,
+  "id": "lsp-native",
+  "name": "Language Servers",
+  "description": "Owns shared local and SSH language-server sessions, document synchronization, diagnostics, completion, navigation, formatting, installation, and cleanup.",
+  "category": "Application providers",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/editor-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0",
+    "chokidar": "^4.0.3",
+    "electron": "^40.4.0",
+    "vscode-jsonrpc": "^9.0.1",
+    "vscode-languageserver-protocol": "^3.18.2"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-skill-native",
+  "name": "AI Tool: Skills",
+  "description": "Loads an enabled skill on demand from the shared AI library and returns its instructions and tool scope.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/plugin.ts" },
+  "dependencies": {
+    "@termco/ai-library-base": "1.0.0",
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

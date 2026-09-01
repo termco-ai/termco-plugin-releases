@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 3,
+  "id": "ui-theme-base",
+  "name": "ui theme base interfaces",
+  "description": "Public service contracts owned by @termco/ui-theme-base.",
+  "category": "Base interfaces",
+  "version": "1.0.0",
+  "dependencies": { "@termco/kernel": "1.0.0" }
+}

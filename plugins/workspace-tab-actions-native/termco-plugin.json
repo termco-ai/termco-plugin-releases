@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "workspace-tab-actions-native",
+  "name": "Workspace Tab Actions",
+  "description": "Owns guarded close, duplicate, rename, and deletion workflows over the selected shared tab provider.",
+  "category": "Workspace providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

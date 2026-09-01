@@ -1,0 +1,12 @@
+{
+  "name": "@termco/ai-inference-base",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@termco/ai-models-base": "1.0.0",
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  }
+}

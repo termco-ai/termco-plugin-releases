@@ -1,0 +1,19 @@
+{
+  "name": "@termco-plugin/onboarding-ui-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "@testing-library/jest-dom": "^6.9.1",
+    "@testing-library/react": "^16.3.2",
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-commands-base": "1.0.0",
+    "@termco/ui-overlays-base": "1.0.0",
+    "@termco/ui-settings-base": "1.0.0",
+    "react": "^19.2.7"
+  }
+}

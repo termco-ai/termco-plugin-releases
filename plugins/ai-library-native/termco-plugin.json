@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-library-native",
+  "name": "AI Library",
+  "description": "Owns application-wide agents, snippets, skills, MCP configuration, persistence, and connection reconciliation.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/ai-library-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/mcp-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

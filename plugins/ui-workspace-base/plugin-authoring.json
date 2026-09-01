@@ -1,0 +1,28 @@
+[
+  {
+    "service": "ui.workspace.views",
+    "aliases": "full workspace page view settings agents manager",
+    "contractPackage": "@termco/ui-workspace-base",
+    "serviceConstant": "UI_WORKSPACE_VIEWS_SERVICE",
+    "registryType": "UiWorkspaceViewRegistry",
+    "contributionType": "UiWorkspaceViewContribution",
+    "requiredFields": ["id", "label", "description", "Component"],
+    "collisionPolicy": "id must be unique across ui.workspace.views",
+    "verification": { "target": "workspace view record", "postcondition": "the selected workspace view is mounted without replacing unrelated views" },
+    "reveal": "workspace-view",
+    "minimalUsage": "inject UI_WORKSPACE_VIEWS_SERVICE and lifecycle-own UiWorkspaceViewRegistry.register through context.effect with context.pluginId and context.generation"
+  },
+  {
+    "service": "ui.workspace.footer",
+    "aliases": "workspace footer terminal footer composer bottom",
+    "contractPackage": "@termco/ui-workspace-base",
+    "serviceConstant": "UI_WORKSPACE_FOOTER_SERVICE",
+    "registryType": "UiWorkspaceFooterRegistry",
+    "contributionType": "UiWorkspaceFooterContribution",
+    "requiredFields": ["id", "Component"],
+    "collisionPolicy": "id must be unique across ui.workspace.footer",
+    "verification": { "target": "workspace footer record", "postcondition": "the exact owned footer is mounted without replacing the workspace" },
+    "reveal": "workspace-footer",
+    "minimalUsage": "inject UI_WORKSPACE_FOOTER_SERVICE and lifecycle-own UiWorkspaceFooterRegistry.register through context.effect with context.pluginId and context.generation"
+  }
+]

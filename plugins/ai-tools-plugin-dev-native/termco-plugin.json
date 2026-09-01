@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-plugin-dev-native",
+  "name": "AI Tools: Plugin Development",
+  "description": "Lets AI discover plugin capabilities, create independent plugins, fork intentionally, inspect and edit managed source, and replace only on explicit request.",
+  "category": "AI tools",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0",
+    "@termco/profile-base": "1.0.0",
+    "@termco/ui-change-reveal-base": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0"
+  },
+  "activation": "eager"
+}

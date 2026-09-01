@@ -1,0 +1,11 @@
+{
+  "name": "@termco-plugin/surface-search-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-header-base": "1.0.0",
+    "@termco/ui-tabs-base": "1.0.0"
+  }
+}

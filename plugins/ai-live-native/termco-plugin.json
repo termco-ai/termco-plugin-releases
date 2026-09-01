@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-live-native",
+  "name": "AI Live Workspace",
+  "description": "Owns the shared replaceable facade that lets AI workflows observe and act on contributed workspace, terminal, browser, and managed-agent operations.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/plugin.ts" },
+  "dependencies": {
+    "@termco/ai-live-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

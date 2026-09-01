@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "languages-settings",
+  "name": "Language Server Settings",
+  "description": "Lists, installs, configures, enables, and restarts language servers through the shared LSP provider.",
+  "category": "Workspace",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.tsx" },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@termco/editor-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-settings-base": "1.0.0"
+  },
+  "activation": "eager"
+}

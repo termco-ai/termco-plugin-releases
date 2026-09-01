@@ -1,0 +1,28 @@
+[
+  {
+    "service": "ui.providers",
+    "aliases": "application react provider context wrapper global root",
+    "contractPackage": "@termco/ui-shell-base",
+    "serviceConstant": "UI_PROVIDERS_SERVICE",
+    "registryType": "UiProviderRegistry",
+    "contributionType": "UiProviderContribution",
+    "requiredFields": ["id", "Component"],
+    "collisionPolicy": "id must be unique across ui.providers; additive plugins must not claim a root provider id",
+    "verification": { "target": "provider record", "postcondition": "the provider wraps the application root without a render error" },
+    "reveal": "none",
+    "minimalUsage": "inject UI_PROVIDERS_SERVICE and lifecycle-own UiProviderRegistry.register through context.effect; use context.pluginId, context.generation, and a unique key"
+  },
+  {
+    "service": "ui.background.tasks",
+    "aliases": "background mounted renderer invisible persistent",
+    "contractPackage": "@termco/ui-shell-base",
+    "serviceConstant": "UI_BACKGROUND_TASKS_SERVICE",
+    "registryType": "UiBackgroundRegistry",
+    "contributionType": "UiBackgroundContribution",
+    "requiredFields": ["id", "label", "description", "Component"],
+    "collisionPolicy": "id must be unique across ui.background.tasks",
+    "verification": { "target": "background task record", "postcondition": "the task is mounted and removed by lifecycle cleanup" },
+    "reveal": "none",
+    "minimalUsage": "inject UI_BACKGROUND_TASKS_SERVICE and lifecycle-own UiBackgroundRegistry.register through context.effect with context.pluginId and context.generation"
+  }
+]

@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "ui-change-reveal-base",
+  "name": "UI Change Reveal Base",
+  "description": "Semantic contracts for locating newly applied plugin contributions.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0"
+  }
+}

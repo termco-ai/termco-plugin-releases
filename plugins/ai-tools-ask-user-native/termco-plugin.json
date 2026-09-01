@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-ask-user-native",
+  "name": "AI Tool: Ask User",
+  "description": "Lets an AI session pause on one clearly explained user decision and resume from the answer.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/plugin.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

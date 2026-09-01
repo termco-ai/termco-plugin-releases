@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "mcp-base",
+  "name": "MCP Base",
+  "description": "Public MCP service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

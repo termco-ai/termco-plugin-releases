@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "ui-workspace-base",
+  "name": "ui workspace base interfaces",
+  "description": "Public service contracts owned by @termco/ui-workspace-base.",
+  "category": "Base interfaces",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "react": "^19.2.7"
+  }
+}

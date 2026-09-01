@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-session-query-native",
+  "name": "AI Tool: Session Query",
+  "description": "Opt-in caller-scoped, redacted, fixed-budget tools for querying canonical session history.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/plugin.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  },
+  "activation": "eager"
+}

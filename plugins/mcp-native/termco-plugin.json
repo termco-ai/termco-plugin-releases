@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "mcp-native",
+  "name": "MCP Clients",
+  "description": "Owns application-wide stdio and HTTP MCP connections, OAuth flows, protected tokens, tool discovery, and tool calls.",
+  "category": "Agent providers",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/desktop-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/mcp-base": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  },
+  "activation": "eager"
+}

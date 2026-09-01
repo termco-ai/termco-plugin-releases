@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-inference-base",
+  "name": "AI Inference Base",
+  "description": "Public AI Inference service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/ai-models-base": "1.0.0",
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  }
+}

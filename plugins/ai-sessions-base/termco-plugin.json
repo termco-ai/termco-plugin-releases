@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-sessions-base",
+  "name": "AI Sessions Base",
+  "description": "Public AI Sessions service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  }
+}

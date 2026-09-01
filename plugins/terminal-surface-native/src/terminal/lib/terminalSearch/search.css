@@ -1,0 +1,33 @@
+/*
+ * Terminal search match styling.
+ *
+ * `::highlight()` rules style the CSS Custom Highlight API path (the
+ * normal one in Chromium); `.term-search-overlay` styles the
+ * positioned-div fallback used when the Highlight API is unavailable.
+ */
+
+::highlight(term-search) {
+  background-color: rgba(86, 156, 214, 0.35);
+}
+
+::highlight(term-search-active) {
+  background-color: #d18616;
+  color: #000;
+}
+
+.term-search-overlay {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.term-search-overlay > div {
+  position: absolute;
+  background: rgba(86, 156, 214, 0.35);
+}
+
+.term-search-overlay > div.active {
+  background: #d18616;
+}

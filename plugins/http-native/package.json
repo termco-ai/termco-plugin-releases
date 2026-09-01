@@ -1,0 +1,7 @@
+{
+  "name": "@termco-plugin/http-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "undici": "^8.5.0" }
+}

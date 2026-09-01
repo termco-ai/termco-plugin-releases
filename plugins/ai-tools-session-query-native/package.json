@@ -1,0 +1,12 @@
+{
+  "name": "@termco/plugin-ai-tools-session-query-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  }
+}

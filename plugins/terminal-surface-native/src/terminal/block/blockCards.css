@@ -1,0 +1,412 @@
+/**
+ * Real block containers (wterm blocks mode) — the card look from
+ * "Spec - Terminal & Blocks": #111419-ish card on the pane background,
+ * hairline border, 11px radius, 30px header bar + prompt-echo line.
+ * Geometry (heights, pads, gap) must match blockChrome.ts — the renderer
+ * positions everything from those numbers; CSS only paints.
+ *
+ * Colors derive from theme tokens (--term-*, app palette) so live theme
+ * switching recolors instantly.
+ */
+
+.term-block {
+  border: 1px solid color-mix(in srgb, var(--term-fg) 7%, transparent);
+  border-radius: 11px;
+  background: color-mix(in srgb, var(--term-fg) 3%, var(--term-bg));
+  contain: layout paint style;
+}
+
+.term-block.term-block-fail {
+  border-color: color-mix(in srgb, var(--term-color-1) 42%, transparent);
+}
+
+/* ---- header slot content (portal'd React) ---- */
+
+.tb-header {
+  display: flex;
+  height: 100%;
+  flex-direction: column;
+  font-family: var(--font-sans, "Geist", sans-serif);
+  user-select: none;
+}
+
+.tb-bar {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  height: 30px;
+  flex: none;
+  padding: 0 13px;
+  background: color-mix(in srgb, var(--term-fg) 2%, transparent);
+  border-bottom: 1px solid color-mix(in srgb, var(--term-fg) 5%, transparent);
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--term-fg) 55%, var(--term-bg));
+  min-width: 0;
+}
+
+.tb-dot {
+  width: 7px;
+  height: 7px;
+  flex: none;
+  border-radius: 50%;
+  background: var(--term-color-2);
+}
+
+.term-block-fail .tb-dot,
+.tb-dot.tb-dot-fail {
+  background: var(--term-color-1);
+}
+
+.tb-cwd {
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  color: color-mix(in srgb, var(--term-fg) 72%, var(--term-bg));
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  min-width: 0;
+}
+
+.tb-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  flex: none;
+  padding: 0 7px;
+  height: 16px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--primary) 32%, transparent);
+  color: var(--primary);
+  font-size: 12px;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  white-space: nowrap;
+}
+
+.tb-meta {
+  margin-left: auto;
+  flex: none;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  white-space: nowrap;
+}
+
+.tb-actions {
+  display: flex;
+  flex: none;
+  gap: 2px;
+  color: color-mix(in srgb, var(--term-fg) 42%, var(--term-bg));
+}
+
+.tb-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 6px;
+  cursor: pointer;
+}
+
+.tb-btn:hover {
+  background: color-mix(in srgb, var(--term-fg) 7%, transparent);
+  color: color-mix(in srgb, var(--term-fg) 85%, var(--term-bg));
+}
+
+.tb-btn.tb-btn-dismiss:hover {
+  color: var(--term-color-1);
+}
+
+.tb-fix {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  flex: none;
+  height: 18px;
+  padding: 0 8px;
+  border-radius: 6px;
+  border: 1px solid color-mix(in srgb, var(--primary) 28%, transparent);
+  background: color-mix(in srgb, var(--primary) 8%, transparent);
+  color: var(--primary);
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.tb-fix:hover {
+  background: color-mix(in srgb, var(--primary) 16%, transparent);
+}
+
+/* prompt echo line: "→ ws git:(branch) command" */
+.tb-echo {
+  display: flex;
+  align-items: center;
+  gap: 0 6px;
+  flex: 1;
+  min-height: 0;
+  padding: 0 15px;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  font-size: var(--term-font-size, 13px);
+  white-space: nowrap;
+  overflow: hidden;
+}
+
+.tb-echo-arrow {
+  color: var(--term-color-2);
+}
+
+.tb-echo-ws {
+  color: var(--term-color-6);
+}
+
+.tb-echo-git {
+  color: color-mix(in srgb, var(--term-fg) 45%, var(--term-bg));
+}
+
+.tb-echo-branch {
+  color: var(--term-color-5);
+}
+
+.tb-echo-cmd {
+  color: var(--term-fg);
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ---- body slot content (portal'd React) ---- */
+
+.tb-body {
+  font-family: var(--font-sans, "Geist", sans-serif);
+  padding: 0 15px 10px;
+}
+
+.tb-collapsed {
+  display: flex;
+  align-items: center;
+  height: 30px;
+  padding: 0 15px;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  font-size: 12px;
+  color: color-mix(in srgb, var(--term-fg) 42%, var(--term-bg));
+  cursor: pointer;
+}
+
+.tb-collapsed:hover {
+  color: color-mix(in srgb, var(--term-fg) 70%, var(--term-bg));
+}
+
+/* files widget: wrapping row of chips */
+.tb-files {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding-top: 8px;
+}
+
+.tb-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--term-fg) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--term-fg) 9%, transparent);
+  font-size: 12px;
+  color: color-mix(in srgb, var(--term-fg) 85%, var(--term-bg));
+  cursor: pointer;
+  max-width: 100%;
+}
+
+.tb-chip:hover {
+  background: color-mix(in srgb, var(--term-fg) 8%, transparent);
+}
+
+.tb-chip-name {
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.tb-chip-dir {
+  color: var(--primary);
+}
+
+/* long-format ls widget: identity-first rows (icon + name like the chip
+   and git widgets) with the printed metadata as aligned muted columns.
+   Each row is a chip-style pill (same border/background recipe as
+   .tb-chip); subgrid keeps the columns aligned across all pills. */
+.tb-ls {
+  margin-top: 8px;
+  display: grid;
+  grid-template-columns:
+    [icon] 16px
+    [name] minmax(0, 1fr)
+    [size] max-content
+    [date] max-content
+    [owner] max-content
+    [perms] max-content;
+  column-gap: 12px;
+  row-gap: 6px;
+}
+
+.tb-ls-row {
+  grid-column: 1 / -1;
+  display: grid;
+  grid-template-columns: subgrid;
+  align-items: center;
+  padding: 3px 10px;
+  border-radius: 7px;
+  background: color-mix(in srgb, var(--term-fg) 4%, transparent);
+  border: 1px solid color-mix(in srgb, var(--term-fg) 9%, transparent);
+  font-size: 12px;
+  cursor: pointer;
+  text-align: left;
+  min-width: 0;
+}
+
+.tb-ls-row:disabled {
+  cursor: default;
+}
+
+.tb-ls-row:not(:disabled):hover {
+  background: color-mix(in srgb, var(--term-fg) 8%, transparent);
+}
+
+.tb-ls-dot .tb-ls-name {
+  opacity: 0.6;
+}
+
+.tb-ls-fileicon {
+  color: color-mix(in srgb, var(--term-fg) 45%, var(--term-bg));
+}
+
+/* Same face as the chip labels — the name is the identity, not data. */
+.tb-ls-name {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  color: color-mix(in srgb, var(--term-fg) 88%, var(--term-bg));
+}
+
+.tb-ls-link {
+  color: color-mix(in srgb, var(--term-fg) 45%, var(--term-bg));
+}
+
+.tb-ls-size {
+  justify-self: end;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--term-fg) 62%, var(--term-bg));
+}
+
+.tb-ls-date {
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  font-variant-numeric: tabular-nums;
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--term-fg) 48%, var(--term-bg));
+}
+
+.tb-ls-owner {
+  font-size: 11.5px;
+  color: color-mix(in srgb, var(--term-fg) 40%, var(--term-bg));
+}
+
+.tb-ls-perms,
+.tb-ls-rest {
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  font-size: 11.5px;
+  white-space: nowrap;
+  color: color-mix(in srgb, var(--term-fg) 35%, var(--term-bg));
+}
+
+.tb-ls-rest {
+  grid-column: size / -1;
+  justify-self: end;
+}
+
+/* git status widget: one row per file */
+.tb-git {
+  padding-top: 6px;
+  display: flex;
+  flex-direction: column;
+}
+
+.tb-git-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 3px 6px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  color: color-mix(in srgb, var(--term-fg) 80%, var(--term-bg));
+}
+
+.tb-git-row:hover {
+  background: color-mix(in srgb, var(--term-fg) 4.5%, transparent);
+}
+
+.tb-git-badge {
+  width: 16px;
+  flex: none;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  font-weight: 600;
+}
+
+.tb-git-badge-m {
+  color: var(--term-color-3);
+}
+
+.tb-git-badge-u {
+  color: var(--term-color-2);
+}
+
+.tb-git-badge-d {
+  color: var(--term-color-1);
+}
+
+.tb-git-path {
+  min-width: 0;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: var(--font-mono, "Geist Mono", monospace);
+}
+
+.tb-git-hint {
+  margin-left: auto;
+  flex: none;
+  color: color-mix(in srgb, var(--term-fg) 38%, var(--term-bg));
+  opacity: 0;
+}
+
+.tb-git-row:hover .tb-git-hint {
+  opacity: 1;
+}
+
+/* url pill (augments rows, sits under the output) */
+.tb-url {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin-top: 6px;
+  padding: 4px 11px;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--term-color-2) 8%, transparent);
+  border: 1px solid color-mix(in srgb, var(--term-color-2) 25%, transparent);
+  font-size: 12px;
+  color: var(--term-color-2);
+  font-family: var(--font-mono, "Geist Mono", monospace);
+  cursor: pointer;
+}
+
+.tb-url:hover {
+  background: color-mix(in srgb, var(--term-color-2) 15%, transparent);
+}
+
+.tb-url-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--term-color-2);
+}

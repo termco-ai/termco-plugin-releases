@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "onboarding-content-native",
+  "name": "Termco Product Stories",
+  "description": "Composes semantic targets from active feature plugins into concise, replayable end-to-end Termco stories.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/index.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0"
+  },
+  "activation": "eager"
+}

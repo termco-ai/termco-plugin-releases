@@ -1,0 +1,26 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-inference-native",
+  "name": "AI Inference",
+  "description": "Owns application-wide executable model access, credentials, endpoint resolution, provider SDKs, reusable model clients, and inference requests.",
+  "category": "Intelligence",
+  "version": "1.0.1",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.38",
+    "@ai-sdk/cerebras": "^3.0.30",
+    "@ai-sdk/google": "^4.0.43",
+    "@ai-sdk/groq": "^4.0.28",
+    "@ai-sdk/openai": "^4.0.41",
+    "@ai-sdk/openai-compatible": "^3.0.30",
+    "@ai-sdk/xai": "^4.0.38",
+    "@termco/ai-inference-base": "1.0.0",
+    "@termco/ai-models-base": "1.0.0",
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/http-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "ai": "^7.0.64"
+  },
+  "activation": "eager"
+}

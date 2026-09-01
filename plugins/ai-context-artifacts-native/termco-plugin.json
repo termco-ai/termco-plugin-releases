@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-context-artifacts-native",
+  "name": "AI Context Artifacts",
+  "description": "Owns the shared redacted transcript reader and durable parked tool-output cache used by AI sessions.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  },
+  "activation": "eager"
+}

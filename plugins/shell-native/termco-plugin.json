@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "shell-native",
+  "name": "Shell Execution",
+  "description": "Owns shared one-shot commands, persistent shell sessions, bounded background jobs, and remote execution through the selected SSH provider.",
+  "category": "Terminal providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

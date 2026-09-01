@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "workspace-tabs-native",
+  "name": "Workspace Tabs",
+  "description": "Owns shared tab identity, active and split selection, cold activation, validation, and publication.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/plugin.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

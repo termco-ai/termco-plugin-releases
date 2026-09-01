@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 3,
+  "id": "workspace-rig-workflows-native",
+  "name": "Workspace Rig Workflows",
+  "description": "Coordinates shared rig creation and transitions through the selected workspace, tab, and terminal providers.",
+  "category": "Workspace providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "sonner": "^2.0.7",
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

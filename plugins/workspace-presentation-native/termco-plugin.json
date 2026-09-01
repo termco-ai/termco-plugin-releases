@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "workspace-presentation-native",
+  "name": "Workspace Presentation State",
+  "description": "Owns the shared selected-workspace read model consumed by replaceable header, sidebar, overlay, and shell plugins.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/plugin.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

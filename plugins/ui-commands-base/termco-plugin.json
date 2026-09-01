@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "ui-commands-base",
+  "name": "ui commands base interfaces",
+  "description": "Public service contracts owned by @termco/ui-commands-base.",
+  "category": "Base interfaces",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-header-base": "1.0.0"
+  }
+}

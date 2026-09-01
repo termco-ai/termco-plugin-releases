@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "storage-bridge",
+  "name": "Storage Renderer Bridge",
+  "description": "Projects storage-family services through the generic process transport.",
+  "category": "Storage",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  },
+  "activation": "eager"
+}

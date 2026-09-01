@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 3,
+  "id": "terminal-settings",
+  "name": "Terminal Settings",
+  "description": "Configures terminal rendering, shell discovery, WSL rig defaults, scrollback, and SSH reconnection.",
+  "category": "Terminal",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.tsx"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-settings-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

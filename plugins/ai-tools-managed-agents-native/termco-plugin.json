@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-managed-agents-native",
+  "name": "AI Tools: Managed Coding Agents",
+  "description": "Lets AI spawn, inspect, and send follow-up instructions to the coding agent bound to the current chat session.",
+  "category": "AI tools",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@termco/plugin-ui-change-reveal-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-change-reveal-base": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0"
+  }
+}

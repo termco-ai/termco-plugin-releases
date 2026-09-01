@@ -1,0 +1,7 @@
+{
+  "name": "@termco-plugin/desktop-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": { "electron": "^40.4.0" }
+}

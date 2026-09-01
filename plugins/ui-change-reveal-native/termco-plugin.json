@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "ui-change-reveal-native",
+  "name": "UI Change Reveal",
+  "description": "Reveals verified plugin contributions through exact surface-owned adapters.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-change-reveal-base": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0"
+  },
+  "activation": "eager"
+}

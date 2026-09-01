@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "command-palette-state-native",
+  "name": "Command Palette State",
+  "description": "Owns the one application-wide replaceable command palette open, mode, query, anchor, and input-slot state.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-overlays-base": "1.0.0"
+  },
+  "activation": "eager"
+}

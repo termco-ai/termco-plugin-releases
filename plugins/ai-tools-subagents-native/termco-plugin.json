@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-subagents-native",
+  "name": "AI Tools: Subagents",
+  "description": "Lets AI delegate isolated read-only exploration, review, security, and research tasks through the selected inference provider.",
+  "category": "AI tools",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-inference-base": "1.0.0",
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,13 @@
+{
+  "name": "@termco/plugin-agents-manager-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "main": "src/plugin.tsx",
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "@termco/onboarding-base": "1.0.0",
+    "react": "^19.2.7"
+  }
+}

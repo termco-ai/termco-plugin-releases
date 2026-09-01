@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "history-native",
+  "name": "Shell History",
+  "description": "Indexes zsh, bash, and fish history plus executable commands, and reuses the shared SSH provider for remote suggestions.",
+  "category": "Terminal providers",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

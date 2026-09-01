@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "files-base",
+  "name": "Files Base",
+  "description": "Public Files service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

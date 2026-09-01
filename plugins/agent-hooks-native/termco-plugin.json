@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 3,
+  "id": "agent-hooks-native",
+  "name": "Terminal Agent Hooks",
+  "description": "Installs OSC lifecycle hooks for terminal agents and routes their renderer signals into the shared activity provider.",
+  "category": "Agent providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/agents-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

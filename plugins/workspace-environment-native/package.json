@@ -1,0 +1,12 @@
+{
+  "name": "@termco-plugin/workspace-environment-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

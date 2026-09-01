@@ -1,0 +1,18 @@
+{
+  "name": "@termco-plugin/statusbar-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/editor-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-settings-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-statusbar-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

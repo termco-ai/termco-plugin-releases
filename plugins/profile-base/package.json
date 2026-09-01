@@ -1,0 +1,11 @@
+{
+  "name": "@termco/profile-base",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0"
+  }
+}

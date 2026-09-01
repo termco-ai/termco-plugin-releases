@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "surface-search-native",
+  "name": "Surface Search Registry",
+  "description": "Owns the shared per-tab search-handle registry used by tab surfaces and the selected header.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-header-base": "1.0.0",
+    "@termco/ui-tabs-base": "1.0.0"
+  },
+  "activation": "eager"
+}

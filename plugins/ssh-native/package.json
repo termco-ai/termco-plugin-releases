@@ -1,0 +1,14 @@
+{
+  "name": "@termco-plugin/ssh-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "electron": "^40.4.0",
+    "undici": "^8.5.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

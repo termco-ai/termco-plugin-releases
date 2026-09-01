@@ -1,0 +1,1 @@
+export { GrillingStrip,  } from "./GrillingStrip";

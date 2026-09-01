@@ -1,0 +1,16 @@
+[
+  {
+    "service": "ui.header.items",
+    "aliases": "header top toolbar navigation action button leading trailing center tabs",
+    "contractPackage": "@termco/ui-header-base",
+    "serviceConstant": "UI_HEADER_ITEMS_SERVICE",
+    "registryType": "UiHeaderItemRegistry",
+    "contributionType": "UiHeaderItemContribution",
+    "variants": ["leading", "workspaces", "center", "trailing", "tabs"],
+    "requiredFields": ["id", "label", "description", "region", "Component"],
+    "collisionPolicy": "id must be unique; additive items use a non-root region and never register a second complete header",
+    "verification": { "target": "header item", "postcondition": "the exact owned item is mounted in its declared region" },
+    "reveal": "header-item",
+    "minimalUsage": "inject UI_HEADER_ITEMS_SERVICE and lifecycle-own UiHeaderItemRegistry.register through context.effect with context.pluginId and context.generation; contribute a non-root region"
+  }
+]

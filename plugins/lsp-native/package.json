@@ -1,0 +1,12 @@
+{
+  "name": "@termco-plugin/lsp-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "electron": "^40.4.0",
+    "chokidar": "^4.0.3",
+    "vscode-jsonrpc": "^9.0.1",
+    "vscode-languageserver-protocol": "^3.18.2"
+  }
+}

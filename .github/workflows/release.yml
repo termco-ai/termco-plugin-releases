@@ -1,0 +1,64 @@
+name: Signed plugin release
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "plugins/**"
+      - "profiles/default/profile.json"
+      - "host-runtime-packages.json"
+      - "termco-compatibility.json"
+      - "scripts/**"
+      - ".github/workflows/release.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: plugin-release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+        with: { fetch-depth: 2 }
+      - uses: pnpm/action-setup@v6
+        with:
+          run_install: false
+      - uses: actions/setup-node@v7
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - name: Build complete signed snapshot
+        env:
+          TERMCO_PLUGIN_RELEASE_PRIVATE_KEY: ${{ secrets.PLUGIN_RELEASE_PRIVATE_KEY }}
+          TERMCO_PLUGIN_RELEASE_KEY_ID: ${{ vars.PLUGIN_RELEASE_KEY_ID }}
+        run: |
+          test -n "$TERMCO_PLUGIN_RELEASE_PRIVATE_KEY"
+          test -n "$TERMCO_PLUGIN_RELEASE_KEY_ID"
+          BASE_REVISION="${{ github.event.before }}"
+          if [ -z "$BASE_REVISION" ] || [ "$BASE_REVISION" = "0000000000000000000000000000000000000000" ] || ! git cat-file -e "$BASE_REVISION^{commit}" 2>/dev/null; then
+            BASE_REVISION="$(git rev-parse --verify HEAD^ 2>/dev/null || git hash-object -t tree /dev/null)"
+          fi
+          MIN_APP="$(node -p "require('./termco-compatibility.json').minApplicationVersion")"
+          MAX_APP="$(node -p "require('./termco-compatibility.json').maxApplicationVersionExclusive")"
+          RELEASE_ID="plugins-${MIN_APP}.${GITHUB_RUN_NUMBER}.${GITHUB_RUN_ATTEMPT}"
+          node scripts/build-plugin-release.mjs \
+            --all --plugin-repository --changed-from "$BASE_REVISION" \
+            --release-id "$RELEASE_ID" \
+            --min-app "$MIN_APP" --max-app "$MAX_APP" \
+            --output plugin-release-artifacts
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          RELEASE_ID="$(node -p "require('./plugin-release-artifacts/termco-plugin-release.json').releaseId")"
+          gh release create "$RELEASE_ID" \
+            --title "Termco plugin set $RELEASE_ID" \
+            --notes "Complete signed plugin snapshot for compatible Termco installations." \
+            plugin-release-artifacts/*

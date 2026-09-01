@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "terminal-workspace-footer-native",
+  "name": "Terminal AI Workspace Footer",
+  "description": "Combines the selected terminal footer implementation with the selected AI workspace composer without coupling either provider to the other.",
+  "category": "Terminal",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-workspace-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

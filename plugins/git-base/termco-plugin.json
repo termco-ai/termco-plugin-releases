@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "git-base",
+  "name": "Git Base",
+  "description": "Public Git service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@termco/ui-agents-base",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": { "@termco/kernel": "1.0.0" }
+}

@@ -1,0 +1,11 @@
+{
+  "name": "@termco/plugin-application-identity-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/application-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "electron": "^40.4.0"
+  }
+}

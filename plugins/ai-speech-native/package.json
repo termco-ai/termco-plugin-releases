@@ -1,0 +1,6 @@
+{
+  "name": "@termco/plugin-ai-speech-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module"
+}

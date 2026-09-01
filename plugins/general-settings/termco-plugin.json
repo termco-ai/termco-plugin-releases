@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 3,
+  "id": "general-settings",
+  "name": "General Settings",
+  "description": "Configures startup, file visibility, agent behavior, rich chat views, and interface scale.",
+  "category": "System",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.tsx" },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@termco/desktop-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-settings-base": "1.0.0",
+    "react": "^19.2.7"
+  },
+  "activation": "eager"
+}

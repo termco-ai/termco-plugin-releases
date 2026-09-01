@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "workspace-native",
+  "name": "Native Workspace Registry",
+  "description": "Owns application-wide workspace authorization, canonical path resolution, launch-directory handling, and WSL discovery.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

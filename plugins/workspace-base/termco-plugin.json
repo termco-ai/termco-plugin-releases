@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "workspace-base",
+  "name": "Workspace Base",
+  "description": "Public Workspace service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-header-base": "1.0.0"
+  }
+}

@@ -1,0 +1,7 @@
+{
+  "name": "@termco-plugin/ai-tools-browser-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {}
+}

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-browser-native",
+  "name": "AI Tools: Browser",
+  "description": "Lets AI inspect and control the user's shared embedded browser sessions with origin-aware approvals.",
+  "category": "AI tools",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/browser-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-base",
+  "name": "AI Tools Base",
+  "description": "Public AI Tools service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

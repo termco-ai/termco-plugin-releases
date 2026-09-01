@@ -1,0 +1,13 @@
+{
+  "name": "@termco-plugin/pty-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "node-pty": "^1.2.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

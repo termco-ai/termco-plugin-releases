@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-mcp-native",
+  "name": "AI Tools: MCP",
+  "description": "Adds tools from connected and explicitly enabled MCP servers to the shared AI session toolset.",
+  "category": "AI",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/mcp-base": "1.0.0"
+  },
+  "activation": "eager"
+}

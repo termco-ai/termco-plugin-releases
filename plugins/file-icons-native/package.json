@@ -1,0 +1,10 @@
+{
+  "name": "@termco/plugin-file-icons-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  }
+}

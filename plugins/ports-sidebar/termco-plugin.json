@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 3,
+  "id": "ports-sidebar",
+  "name": "SSH Port Forwarding",
+  "description": "Lists remote listeners and manages shared SSH port forwards from the sidebar.",
+  "category": "Remote interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.tsx"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "@testing-library/react": "^16.3.2",
+    "@termco/ui": "1.0.0",
+    "react": "^19.2.7",
+    "@termco/desktop-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/ui-sidebar-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

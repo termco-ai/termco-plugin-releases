@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 3,
+  "id": "pty-native",
+  "name": "Native PTY Sessions",
+  "description": "Owns the one application-wide native PTY process pool, shell integration, output filtering, and terminal-agent detection.",
+  "category": "Terminal providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "node-pty": "^1.2.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

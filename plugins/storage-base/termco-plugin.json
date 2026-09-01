@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "storage-base",
+  "name": "Storage Base",
+  "description": "Public Storage service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

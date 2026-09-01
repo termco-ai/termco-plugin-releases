@@ -1,0 +1,16 @@
+[
+  {
+    "service": "ui.statusbar.items",
+    "aliases": "status bar footer bottom item indicator left right",
+    "contractPackage": "@termco/ui-statusbar-base",
+    "serviceConstant": "UI_STATUSBAR_ITEMS_SERVICE",
+    "registryType": "UiStatusbarItemRegistry",
+    "contributionType": "UiStatusbarItemContribution",
+    "variants": ["left", "right"],
+    "requiredFields": ["id", "label", "description", "side", "Component"],
+    "collisionPolicy": "id must be unique; additive items use side left or right and never register a second root statusbar",
+    "verification": { "target": "statusbar item", "postcondition": "the exact owned item is mounted on its declared side" },
+    "reveal": "statusbar-item",
+    "minimalUsage": "inject UI_STATUSBAR_ITEMS_SERVICE and lifecycle-own UiStatusbarItemRegistry.register through context.effect with context.pluginId and context.generation; use side left or right"
+  }
+]

@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "http-native",
+  "name": "Protected HTTP Client",
+  "description": "Owns application-wide HTTP requests and streaming with URL validation, IP classification, DNS pinning, and redirect protection.",
+  "category": "Network providers",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/http-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "undici": "^8.5.0"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-models-base",
+  "name": "AI Models Base",
+  "description": "Public AI Models service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

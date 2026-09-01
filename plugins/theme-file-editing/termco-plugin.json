@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 3,
+  "id": "theme-file-editing",
+  "name": "Theme File Editing",
+  "description": "Owns the live workflow that materializes custom themes as editable files and reapplies valid saved changes.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.tsx"
+  },
+  "dependencies": {
+    "@termco/application-base": "1.0.0",
+    "@termco/desktop-base": "1.0.0",
+    "@termco/editor-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-theme-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

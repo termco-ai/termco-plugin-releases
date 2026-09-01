@@ -1,0 +1,29 @@
+{
+  "schemaVersion": 3,
+  "id": "ssh-native",
+  "name": "Native SSH Runtime",
+  "description": "Owns the shared SSH connection pool, remote agent deployment, RPC channels, host verification, reconnect state, port forwards, and remote shell integration.",
+  "category": "Remote providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "assetBuilds": [
+    {
+      "entry": "src/server/main.ts",
+      "output": "assets/server/termco-server.mjs",
+      "platform": "node",
+      "target": "node18"
+    }
+  ],
+  "dependencies": {
+    "electron": "^40.4.0",
+    "undici": "^8.5.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

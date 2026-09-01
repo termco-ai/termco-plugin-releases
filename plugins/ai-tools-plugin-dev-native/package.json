@@ -1,0 +1,14 @@
+{
+  "name": "@termco-plugin/ai-tools-plugin-dev-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0",
+    "@termco/profile-base": "1.0.0",
+    "@termco/ui-change-reveal-base": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0"
+  }
+}

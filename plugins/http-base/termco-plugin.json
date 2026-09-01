@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "http-base",
+  "name": "HTTP Base",
+  "description": "Public HTTP service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

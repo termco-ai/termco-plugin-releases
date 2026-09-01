@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "onboarding-base",
+  "name": "Onboarding Contracts",
+  "description": "Public contracts for plugin-owned onboarding journeys, semantic targets, progress, and the standard runtime.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

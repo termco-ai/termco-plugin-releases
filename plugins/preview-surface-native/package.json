@@ -1,0 +1,21 @@
+{
+  "name": "@termco-plugin/preview-surface-native",
+  "version": "1.0.1",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@hugeicons/react": "^1.1.4",
+    "@hugeicons/core-free-icons": "^3.1.1",
+    "@termco/ai-live-base": "1.0.0",
+    "@termco/browser-base": "1.0.0",
+    "@termco/desktop-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/shortcuts-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-commands-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-tabs-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

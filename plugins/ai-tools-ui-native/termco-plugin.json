@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-ui-native",
+  "name": "AI Tools: Rich UI",
+  "description": "Lets AI render structured tables, charts, diffs, findings, trees, metrics, and interactive decisions in chat.",
+  "category": "AI tools",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

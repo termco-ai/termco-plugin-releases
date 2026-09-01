@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "shortcuts-native",
+  "name": "Application Shortcuts",
+  "description": "Owns the shared shortcut catalog, active bindings, matching rules, labels, and persisted overrides.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/shortcuts-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/ui": "1.0.0"
+  },
+  "activation": "eager"
+}

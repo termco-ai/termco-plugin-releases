@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 3,
+  "id": "theme-native",
+  "name": "Application Theme",
+  "description": "Owns application colors, light/dark mode, custom themes, editor-theme resolution, and desktop backgrounds.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.tsx"
+  },
+  "dependencies": {
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0",
+    "@termco/ui-theme-base": "1.0.0"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "storage-json",
+  "name": "JSON Application Storage",
+  "description": "Provides application-wide durable JSON stores with serialized atomic writes and shared in-memory state.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "electron": "^40.4.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  },
+  "activation": "lazy"
+}

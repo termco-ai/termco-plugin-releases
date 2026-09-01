@@ -1,0 +1,17 @@
+{
+  "name": "@termco/plugin-selection-ask-ai-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "react": "^19.2.7",
+    "@termco/ui": "1.0.0",
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/editor-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-overlays-base": "1.0.0",
+    "@termco/ui-workspace-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

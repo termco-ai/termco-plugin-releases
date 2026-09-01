@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 3,
+  "id": "ssh-auto-connect",
+  "name": "SSH Startup Resume",
+  "description": "Owns best-effort startup reconnection for restored SSH rigs while sharing the application-wide SSH connection pool.",
+  "category": "Workspace interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.tsx"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

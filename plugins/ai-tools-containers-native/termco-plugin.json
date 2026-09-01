@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-containers-native",
+  "name": "AI Tools: Containers & Ports",
+  "description": "Lets AI inspect and control containers and shared SSH port forwards through the selected application-wide providers.",
+  "category": "AI tools",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/containers-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

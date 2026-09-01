@@ -1,0 +1,7 @@
+{
+  "name": "@termco/ui-theme-base",
+  "version": "1.0.0",
+  "type": "module",
+  "exports": "./src/index.ts",
+  "dependencies": { "@termco/kernel": "1.0.0" }
+}

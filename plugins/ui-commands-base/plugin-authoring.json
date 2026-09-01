@@ -1,0 +1,15 @@
+[
+  {
+    "service": "ui.commands",
+    "aliases": "command palette action keyboard shortcut",
+    "contractPackage": "@termco/ui-commands-base",
+    "serviceConstant": "UI_COMMANDS_SERVICE",
+    "registryType": "UiCommandRegistry",
+    "contributionType": "UiCommandContribution",
+    "requiredFields": ["id", "title", "description", "run"],
+    "collisionPolicy": "id must be unique across ui.commands",
+    "verification": { "target": "command palette result", "postcondition": "the command is discoverable but is not auto-executed" },
+    "reveal": "command",
+    "minimalUsage": "inject UI_COMMANDS_SERVICE and lifecycle-own UiCommandRegistry.register through context.effect with context.pluginId and context.generation"
+  }
+]

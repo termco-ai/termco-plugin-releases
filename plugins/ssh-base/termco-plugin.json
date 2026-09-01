@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "ssh-base",
+  "name": "SSH Base",
+  "description": "Public SSH service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

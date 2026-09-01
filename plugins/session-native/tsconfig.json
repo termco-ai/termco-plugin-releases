@@ -1,0 +1,13 @@
+{
+  "extends": "../../tsconfig.plugins.json",
+  "compilerOptions": {
+    "baseUrl": "../..",
+    "paths": {
+      "@termco/kernel": ["src/platform/kernel.ts"],
+      "@termco/ui": ["src/platform/ui.ts"],
+      "@termco/*-base": ["plugins/*-base/src/index.ts"],
+      "@/*": ["src/*"]
+    }
+  },
+  "include": ["src/**/*.ts", "../../src/platform/kernel.ts"]
+}

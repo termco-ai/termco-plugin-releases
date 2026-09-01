@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "shortcuts-base",
+  "name": "Shortcuts Base",
+  "description": "Public Shortcuts service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

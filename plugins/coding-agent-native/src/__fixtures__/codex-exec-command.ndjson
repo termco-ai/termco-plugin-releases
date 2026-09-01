@@ -1,0 +1,7 @@
+{"type":"thread.started","thread_id":"019ff80b-cd9a-7d81-afc0-c22dffe130bb"}
+{"type":"turn.started"}
+{"type":"item.completed","item":{"id":"item_0","type":"agent_message","text":"I’ll run that exact command and report its output."}}
+{"type":"item.started","item":{"id":"item_1","type":"command_execution","command":"/bin/zsh -lc 'echo hello-fixture'","aggregated_output":"","exit_code":null,"status":"in_progress"}}
+{"type":"item.completed","item":{"id":"item_1","type":"command_execution","command":"/bin/zsh -lc 'echo hello-fixture'","aggregated_output":"hello-fixture\n","exit_code":0,"status":"completed"}}
+{"type":"item.completed","item":{"id":"item_2","type":"agent_message","text":"`hello-fixture`"}}
+{"type":"turn.completed","usage":{"input_tokens":33984,"cached_input_tokens":27136,"cache_write_input_tokens":0,"output_tokens":126,"reasoning_output_tokens":0}}

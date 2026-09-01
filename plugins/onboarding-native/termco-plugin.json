@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "onboarding-native",
+  "name": "Onboarding Runtime",
+  "description": "Composes plugin-owned onboarding journeys and persists local, version-aware progress.",
+  "category": "Interface",
+  "version": "1.0.1",
+  "entrypoints": {
+    "renderer": "src/index.ts"
+  },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  },
+  "activation": "eager"
+}

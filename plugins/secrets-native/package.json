@@ -1,0 +1,11 @@
+{
+  "name": "@termco-plugin/secrets-native",
+  "version": "1.0.2",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "electron": "^40.4.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "application-identity-native",
+  "name": "Application Identity",
+  "description": "Owns stable product name, build facts, bundle identity, and branding independently of About and desktop affordances.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/application-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "electron": "^40.4.0"
+  },
+  "activation": "eager"
+}

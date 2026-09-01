@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "git-native",
+  "name": "Native Git Repository",
+  "description": "Provides application-wide Git status, history, branches, staging, commits, diffs, and remote operations through shared workspace and SSH capabilities.",
+  "category": "Development providers",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/files-base": "1.0.0",
+    "@termco/git-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

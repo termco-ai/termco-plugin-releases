@@ -1,0 +1,12 @@
+{
+  "name": "@termco-plugin/rigs-commands",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-commands-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "mcp-rig-sync",
+  "name": "MCP Workspace Mirror",
+  "description": "Keeps workspace rigs visible to the shared MCP control server so external agents resolve the correct working directory.",
+  "category": "AI",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.tsx" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/mcp-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

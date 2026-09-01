@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "trajectory-base",
+  "name": "Trajectory Base",
+  "description": "Presentation-only navigation contracts for canonical session trajectories.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  }
+}

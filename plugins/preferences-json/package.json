@@ -1,0 +1,11 @@
+{
+  "name": "@termco/plugin-preferences-json",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  }
+}

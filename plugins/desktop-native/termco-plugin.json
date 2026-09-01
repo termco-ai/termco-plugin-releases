@@ -1,0 +1,19 @@
+{
+  "schemaVersion": 3,
+  "id": "desktop-native",
+  "name": "Desktop Integration",
+  "description": "Provides operating-system open and reveal actions, process lifecycle, autostart, clipboard, notifications, and renderer logging.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/application-base": "1.0.0",
+    "@termco/desktop-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "electron": "^40.4.0"
+  },
+  "activation": "eager"
+}

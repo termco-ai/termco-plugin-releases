@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "secrets-native",
+  "name": "Native Secret Storage",
+  "description": "Encrypts application secrets with Electron safeStorage before persisting ciphertext locally.",
+  "category": "Platform providers",
+  "version": "1.0.2",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "electron": "^40.4.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  },
+  "activation": "lazy"
+}

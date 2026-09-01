@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-tools-terminal-native",
+  "name": "AI Tools: Terminal",
+  "description": "Lets AI use shared shell sessions, the user's visible terminal, previews, and workspace tabs without creating a second PTY or SSH runtime.",
+  "category": "AI tools",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

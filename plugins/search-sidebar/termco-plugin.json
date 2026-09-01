@@ -1,0 +1,22 @@
+{
+  "schemaVersion": 3,
+  "id": "search-sidebar",
+  "name": "Workspace Search",
+  "description": "Searches file contents in the active local, WSL, or SSH workspace and opens matches at their exact line.",
+  "category": "Workspace interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.tsx"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "@testing-library/react": "^16.3.2",
+    "@termco/ui": "1.0.0",
+    "react": "^19.2.7",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-sidebar-base": "1.0.0"
+  },
+  "activation": "eager"
+}

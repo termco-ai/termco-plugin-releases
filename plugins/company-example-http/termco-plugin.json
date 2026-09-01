@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "company-example-http",
+  "name": "Example Company HTTP Provider",
+  "description": "Example organization-owned application-wide HTTP provider selected by company profile.json.",
+  "category": "Company examples",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/http-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager",
+  "replaces": "http-native"
+}

@@ -1,0 +1,9 @@
+{
+  "schemaVersion": 3,
+  "id": "ui-agents-base",
+  "name": "ui agents base interfaces",
+  "description": "Public service contracts owned by @termco/ui-agents-base.",
+  "category": "Base interfaces",
+  "version": "1.0.0",
+  "dependencies": { "@termco/kernel": "1.0.0" }
+}

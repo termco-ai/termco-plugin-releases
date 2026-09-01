@@ -1,0 +1,28 @@
+[
+  {
+    "service": "ui.ai-dock.views",
+    "aliases": "ai dock chat agent workflow tab panel",
+    "contractPackage": "@termco/ui-dock-base",
+    "serviceConstant": "UI_AI_DOCK_VIEWS_SERVICE",
+    "registryType": "UiAiDockViewRegistry",
+    "contributionType": "UiAiDockViewContribution",
+    "requiredFields": ["id", "label", "description", "Component"],
+    "collisionPolicy": "id must be unique across ui.ai-dock.views",
+    "verification": { "target": "AI dock view tab", "postcondition": "the contributed dock view is selected and mounted" },
+    "reveal": "ai-dock-view",
+    "minimalUsage": "inject UI_AI_DOCK_VIEWS_SERVICE and lifecycle-own UiAiDockViewRegistry.register through context.effect with context.pluginId and context.generation"
+  },
+  {
+    "service": "ui.dock.surfaces",
+    "aliases": "dock surface container bottom right panel",
+    "contractPackage": "@termco/ui-dock-base",
+    "serviceConstant": "UI_DOCK_SURFACES_SERVICE",
+    "registryType": "UiDockSurfaceRegistry",
+    "contributionType": "UiDockSurfaceContribution",
+    "requiredFields": ["id", "Component"],
+    "collisionPolicy": "id must be unique across ui.dock.surfaces",
+    "verification": { "target": "dock surface record", "postcondition": "the exact owned dock surface is mounted" },
+    "reveal": "dock-surface",
+    "minimalUsage": "inject UI_DOCK_SURFACES_SERVICE and lifecycle-own UiDockSurfaceRegistry.register through context.effect with context.pluginId and context.generation"
+  }
+]

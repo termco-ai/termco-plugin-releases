@@ -1,0 +1,20 @@
+{
+  "schemaVersion": 3,
+  "id": "appearance-settings",
+  "name": "Appearance Settings",
+  "description": "Configures interface mode, application and editor themes, custom theme files, and desktop backgrounds.",
+  "category": "Application",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.tsx" },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-settings-base": "1.0.0",
+    "@termco/ui-theme-base": "1.0.0",
+    "react": "^19.2.7"
+  },
+  "activation": "eager"
+}

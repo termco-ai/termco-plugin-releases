@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "session-query-native",
+  "name": "Session Query",
+  "description": "Searches and explains canonical current-format session history.",
+  "category": "AI providers",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/main.ts" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  },
+  "activation": "eager"
+}

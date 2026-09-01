@@ -1,0 +1,15 @@
+[
+  {
+    "service": "ui.overlays",
+    "aliases": "global overlay floating fab dialog hud application-wide",
+    "contractPackage": "@termco/ui-overlays-base",
+    "serviceConstant": "UI_OVERLAYS_SERVICE",
+    "registryType": "UiOverlayRegistry",
+    "contributionType": "UiOverlayContribution",
+    "requiredFields": ["id", "label", "description", "Component"],
+    "collisionPolicy": "id must be unique across ui.overlays and owner key must match the plugin plan",
+    "verification": { "target": "overlay control", "postcondition": "the exact owned overlay is visible and its declared interaction reaches the expected state" },
+    "reveal": "overlay",
+    "minimalUsage": "inject UI_OVERLAYS_SERVICE and lifecycle-own UiOverlayRegistry.register through context.effect with context.pluginId and context.generation"
+  }
+]

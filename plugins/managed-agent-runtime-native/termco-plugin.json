@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "managed-agent-runtime-native",
+  "name": "Managed Coding Agent Runtime",
+  "description": "Owns managed coding-agent terminal launch, hook installation, bounded review state, session routing, and cleanup.",
+  "category": "Agent providers",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/agents-base": "1.0.0",
+    "@termco/ai-live-base": "1.0.0",
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/terminal-base": "1.0.0"
+  },
+  "activation": "eager"
+}

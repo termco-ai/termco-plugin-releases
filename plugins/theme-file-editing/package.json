@@ -1,0 +1,18 @@
+{
+  "name": "@termco-plugin/theme-file-editing",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/application-base": "1.0.0",
+    "@termco/desktop-base": "1.0.0",
+    "@termco/editor-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-theme-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

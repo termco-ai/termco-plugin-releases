@@ -1,0 +1,13 @@
+{
+  "schemaVersion": 3,
+  "id": "ui-statusbar-base",
+  "name": "ui statusbar base interfaces",
+  "description": "Public service contracts owned by @termco/ui-statusbar-base.",
+  "category": "Base interfaces",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "react": "^19.2.7",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

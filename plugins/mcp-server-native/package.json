@@ -1,0 +1,10 @@
+{
+  "name": "@termco-plugin/mcp-server-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/storage-base": "1.0.0",
+    "electron": "^40.4.0"
+  }
+}

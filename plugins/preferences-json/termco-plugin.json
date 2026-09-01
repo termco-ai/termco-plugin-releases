@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "preferences-json",
+  "name": "Application Preferences",
+  "description": "Owns the application-wide persisted preference values shared by independently replaceable feature plugins.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts"
+  },
+  "dependencies": {
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0"
+  },
+  "activation": "eager"
+}

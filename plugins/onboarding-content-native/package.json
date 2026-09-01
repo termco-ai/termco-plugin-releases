@@ -1,0 +1,10 @@
+{
+  "name": "@termco-plugin/onboarding-content-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0"
+  }
+}

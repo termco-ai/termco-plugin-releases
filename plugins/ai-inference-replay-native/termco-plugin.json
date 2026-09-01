@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-inference-replay-native",
+  "name": "Deterministic AI Inference Replay",
+  "description": "Opt-in keyless inference provider backed only by strict current-format canonical session fixtures.",
+  "category": "Development",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/index.ts" },
+  "dependencies": {
+    "@termco/ai-inference-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  },
+  "activation": "eager"
+}
+

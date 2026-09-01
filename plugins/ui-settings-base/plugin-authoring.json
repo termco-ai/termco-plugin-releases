@@ -1,0 +1,15 @@
+[
+  {
+    "service": "ui.settings.sections",
+    "aliases": "settings section page preferences configuration",
+    "contractPackage": "@termco/ui-settings-base",
+    "serviceConstant": "UI_SETTINGS_SECTIONS_SERVICE",
+    "registryType": "UiSettingsSectionRegistry",
+    "contributionType": "UiSettingsSectionContribution",
+    "requiredFields": ["id", "label", "description", "category", "Component", "searchEntries"],
+    "collisionPolicy": "id must be unique across ui.settings.sections",
+    "verification": { "target": "settings section navigation item", "postcondition": "the exact section is selected and its heading is visible" },
+    "reveal": "settings-section",
+    "minimalUsage": "inject UI_SETTINGS_SECTIONS_SERVICE and lifecycle-own UiSettingsSectionRegistry.register through context.effect with context.pluginId and context.generation"
+  }
+]

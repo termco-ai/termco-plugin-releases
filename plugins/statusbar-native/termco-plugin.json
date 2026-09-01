@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 3,
+  "id": "statusbar-native",
+  "name": "Default Status Bar",
+  "description": "Owns the complete default status bar: readiness, workspace environment, path navigation, LSP, privacy, agent state, and AI action.",
+  "category": "Interface",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/renderer.tsx"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "@testing-library/react": "^16.3.2",
+    "@termco/ui": "1.0.0",
+    "react": "^19.2.7",
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/editor-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-settings-base": "1.0.0",
+    "@termco/ui-statusbar-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

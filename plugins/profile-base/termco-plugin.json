@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "profile-base",
+  "name": "Profile Base",
+  "description": "Public Profile service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-shell-base": "1.0.0"
+  }
+}

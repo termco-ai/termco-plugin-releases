@@ -1,0 +1,23 @@
+{
+  "name": "@termco-plugin/workflows-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/containers-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/git-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/onboarding-base": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/terminal-base": "1.0.0",
+    "@termco/ui-commands-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-dock-base": "1.0.0",
+    "@termco/ui-overlays-base": "1.0.0",
+    "@termco/workflows-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

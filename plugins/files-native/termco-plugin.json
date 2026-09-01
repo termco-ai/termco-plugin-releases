@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "files-native",
+  "name": "Workspace Files",
+  "description": "Owns authorized local and remote workspace file IO, mutation, directory trees, search, grep, glob, and filesystem watching.",
+  "category": "Workspace providers",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/events-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0",
+    "@vscode/ripgrep": "^1.15.14",
+    "chokidar": "^4.0.3"
+  },
+  "activation": "eager"
+}

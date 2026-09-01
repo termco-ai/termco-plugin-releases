@@ -1,0 +1,15 @@
+[
+  {
+    "service": "ui.tabs.kinds",
+    "aliases": "workspace tab surface editor preview custom tab kind",
+    "contractPackage": "@termco/ui-tabs-base",
+    "serviceConstant": "UI_TABS_KINDS_SERVICE",
+    "registryType": "UiTabKindRegistry",
+    "contributionType": "UiTabKindContribution",
+    "requiredFields": ["id", "label", "description", "kinds", "Component"],
+    "collisionPolicy": "id and every claimed tab kind must be unique",
+    "verification": { "target": "tab-kind record", "postcondition": "a valid sample tab mounts the contributed surface" },
+    "reveal": "tab-kind",
+    "minimalUsage": "inject UI_TABS_KINDS_SERVICE and lifecycle-own UiTabKindRegistry.register through context.effect with context.pluginId and context.generation; claim only unique tab kind strings"
+  }
+]

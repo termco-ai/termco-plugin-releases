@@ -1,0 +1,11 @@
+{
+  "name": "@termco-plugin/workspace-tabs-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

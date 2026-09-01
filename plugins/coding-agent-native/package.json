@@ -1,0 +1,19 @@
+{
+  "name": "@termco-plugin/coding-agent-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/ai-sessions-base": "1.0.0",
+    "@termco/onboarding-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/session-base": "1.0.0",
+    "@termco/trajectory-base": "1.0.0",
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "ai": "^6.0.116",
+    "electron": "^40.4.0",
+    "react": "^19.2.7",
+    "zustand": "^5.0.14"
+  }
+}

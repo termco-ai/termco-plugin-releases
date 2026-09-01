@@ -1,0 +1,12 @@
+{
+  "name": "@termco/plugin-shortcuts-native",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/shortcuts-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/ui": "1.0.0"
+  }
+}

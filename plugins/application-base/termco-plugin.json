@@ -1,0 +1,11 @@
+{
+  "schemaVersion": 3,
+  "id": "application-base",
+  "name": "Application Base",
+  "description": "Public Application service contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0"
+  }
+}

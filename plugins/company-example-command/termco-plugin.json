@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "company-example-command",
+  "name": "Example Company Command",
+  "description": "Adds an organization-owned command to the shared command palette.",
+  "category": "Company examples",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-commands-base": "1.0.0"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,18 @@
+{
+  "schemaVersion": 3,
+  "id": "session-native",
+  "name": "Session History",
+  "description": "Owns current-format session history and atomic event sequencing.",
+  "category": "AI providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "electron": "^40.4.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  },
+  "activation": "eager"
+}

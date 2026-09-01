@@ -1,0 +1,17 @@
+{
+  "schemaVersion": 3,
+  "id": "events-native",
+  "name": "Application Event Bus",
+  "description": "Owns the application-wide named event bus shared by product providers and UI transports.",
+  "category": "Platform providers",
+  "version": "1.0.0",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "src/renderer.ts"
+  },
+  "dependencies": {
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

@@ -1,0 +1,12 @@
+{
+  "name": "@termco/plugin-search-sidebar",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/ui-sidebar-base": "1.0.0"
+  }
+}

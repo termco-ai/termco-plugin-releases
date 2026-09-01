@@ -1,0 +1,16 @@
+{
+  "schemaVersion": 3,
+  "id": "mcp-server-native",
+  "name": "MCP Control Server",
+  "description": "Owns the application-wide MCP control server, hashed access tokens, managed-run credentials, rig routing, approval policy, and renderer tool bridge.",
+  "category": "Agent providers",
+  "version": "1.0.0",
+  "entrypoints": { "main": "src/main.ts", "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/mcp-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "electron": "^40.4.0"
+  },
+  "activation": "eager"
+}

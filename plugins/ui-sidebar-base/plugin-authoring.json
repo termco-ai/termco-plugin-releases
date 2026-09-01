@@ -1,0 +1,15 @@
+[
+  {
+    "service": "ui.sidebar.views",
+    "aliases": "left sidebar icon rail navigation panel view calculator",
+    "contractPackage": "@termco/ui-sidebar-base",
+    "serviceConstant": "UI_SIDEBAR_VIEWS_SERVICE",
+    "registryType": "UiSidebarViewRegistry",
+    "contributionType": "UiSidebarViewContribution",
+    "requiredFields": ["id", "label", "description", "icon", "Component"],
+    "collisionPolicy": "id must be unique across ui.sidebar.views and owner key must match the plugin plan",
+    "verification": { "target": "sidebar rail button", "postcondition": "the contributed view is selected and mounted" },
+    "reveal": "sidebar-view",
+    "minimalUsage": "inject UI_SIDEBAR_VIEWS_SERVICE and lifecycle-own UiSidebarViewRegistry.register through context.effect with context.pluginId and context.generation; provide a unique id, label, icon, and Component"
+  }
+]

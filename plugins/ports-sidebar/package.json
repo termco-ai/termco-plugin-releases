@@ -1,0 +1,15 @@
+{
+  "name": "@termco/plugin-ports-sidebar",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "dependencies": {
+    "@termco/desktop-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ssh-base": "1.0.0",
+    "@termco/ui-sidebar-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

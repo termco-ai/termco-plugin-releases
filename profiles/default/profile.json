@@ -1,0 +1,428 @@
+{
+  "schemaVersion": 3,
+  "id": "termco.default",
+  "bundles": [],
+  "plugins": [
+    {
+      "id": "agent-hooks-native",
+      "module": "bundled:plugins/agent-hooks-native"
+    },
+    {
+      "id": "agent-activity-native",
+      "module": "bundled:plugins/agent-activity-native"
+    },
+    {
+      "id": "desktop-native",
+      "module": "bundled:plugins/desktop-native"
+    },
+    {
+      "id": "application-identity-native",
+      "module": "bundled:plugins/application-identity-native"
+    },
+    {
+      "id": "secrets-native",
+      "module": "bundled:plugins/secrets-native"
+    },
+    {
+      "id": "storage-json",
+      "module": "bundled:plugins/storage-json"
+    },
+    {
+      "id": "preferences-json",
+      "module": "bundled:plugins/preferences-json"
+    },
+    {
+      "id": "storage-bridge",
+      "module": "bundled:plugins/storage-bridge"
+    },
+    {
+      "id": "theme-native",
+      "module": "bundled:plugins/theme-native"
+    },
+    {
+      "id": "theme-file-editing",
+      "module": "bundled:plugins/theme-file-editing"
+    },
+    {
+      "id": "ssh-auto-connect",
+      "module": "bundled:plugins/ssh-auto-connect"
+    },
+    {
+      "id": "mcp-rig-sync",
+      "module": "bundled:plugins/mcp-rig-sync"
+    },
+    {
+      "id": "ai-registry-native",
+      "module": "bundled:plugins/ai-registry-native"
+    },
+    {
+      "id": "ai-session-state-native",
+      "module": "bundled:plugins/ai-session-state-native"
+    },
+    {
+      "id": "mcp-tool-bridge",
+      "module": "bundled:plugins/mcp-tool-bridge"
+    },
+    {
+      "id": "ai-tools-mcp-native",
+      "module": "bundled:plugins/ai-tools-mcp-native"
+    },
+    {
+      "id": "ai-tools-lsp-native",
+      "module": "bundled:plugins/ai-tools-lsp-native"
+    },
+    {
+      "id": "ai-tools-todo-native",
+      "module": "bundled:plugins/ai-tools-todo-native"
+    },
+    {
+      "id": "ai-tools-ask-user-native",
+      "module": "bundled:plugins/ai-tools-ask-user-native"
+    },
+    {
+      "id": "ai-tools-skill-native",
+      "module": "bundled:plugins/ai-tools-skill-native"
+    },
+    {
+      "id": "ai-tools-transcript-native",
+      "module": "bundled:plugins/ai-tools-transcript-native"
+    },
+    {
+      "id": "ai-tools-system-native",
+      "module": "bundled:plugins/ai-tools-system-native"
+    },
+    {
+      "id": "ai-tools-git-native",
+      "module": "bundled:plugins/ai-tools-git-native"
+    },
+    {
+      "id": "ai-tools-containers-native",
+      "module": "bundled:plugins/ai-tools-containers-native"
+    },
+    {
+      "id": "ai-tools-terminal-native",
+      "module": "bundled:plugins/ai-tools-terminal-native"
+    },
+    {
+      "id": "ai-tools-files-native",
+      "module": "bundled:plugins/ai-tools-files-native"
+    },
+    {
+      "id": "ai-tools-browser-native",
+      "module": "bundled:plugins/ai-tools-browser-native"
+    },
+    {
+      "id": "ai-tools-ui-native",
+      "module": "bundled:plugins/ai-tools-ui-native"
+    },
+    {
+      "id": "ai-tools-plugin-dev-native",
+      "module": "bundled:plugins/ai-tools-plugin-dev-native"
+    },
+    {
+      "id": "ai-tools-managed-agents-native",
+      "module": "bundled:plugins/ai-tools-managed-agents-native"
+    },
+    {
+      "id": "ai-inference-native",
+      "module": "bundled:plugins/ai-inference-native"
+    },
+    {
+      "id": "ai-speech-native",
+      "module": "bundled:plugins/ai-speech-native"
+    },
+    {
+      "id": "ai-tools-subagents-native",
+      "module": "bundled:plugins/ai-tools-subagents-native"
+    },
+    {
+      "id": "workflows-native",
+      "module": "bundled:plugins/workflows-native"
+    },
+    {
+      "id": "ai-tools-workflows-native",
+      "module": "bundled:plugins/ai-tools-workflows-native"
+    },
+    {
+      "id": "models-native",
+      "module": "bundled:plugins/models-native"
+    },
+    {
+      "id": "shortcuts-native",
+      "module": "bundled:plugins/shortcuts-native"
+    },
+    {
+      "id": "workspace-native",
+      "module": "bundled:plugins/workspace-native"
+    },
+    {
+      "id": "workspace-environment-native",
+      "module": "bundled:plugins/workspace-environment-native"
+    },
+    {
+      "id": "workspace-rig-workflows-native",
+      "module": "bundled:plugins/workspace-rig-workflows-native"
+    },
+    {
+      "id": "workspace-rigs-native",
+      "module": "bundled:plugins/workspace-rigs-native"
+    },
+    {
+      "id": "workspace-tabs-native",
+      "module": "bundled:plugins/workspace-tabs-native"
+    },
+    {
+      "id": "workspace-presentation-native",
+      "module": "bundled:plugins/workspace-presentation-native"
+    },
+    {
+      "id": "workspace-tab-actions-native",
+      "module": "bundled:plugins/workspace-tab-actions-native"
+    },
+    {
+      "id": "sidebar-navigation-native",
+      "module": "bundled:plugins/sidebar-navigation-native"
+    },
+    {
+      "id": "surface-search-native",
+      "module": "bundled:plugins/surface-search-native"
+    },
+    {
+      "id": "ui-change-reveal-native",
+      "module": "bundled:plugins/ui-change-reveal-native"
+    },
+    {
+      "id": "workspace-shell-native",
+      "module": "bundled:plugins/workspace-shell-native"
+    },
+    {
+      "id": "events-native",
+      "module": "bundled:plugins/events-native"
+    },
+    {
+      "id": "pty-native",
+      "module": "bundled:plugins/pty-native"
+    },
+    {
+      "id": "ssh-native",
+      "module": "bundled:plugins/ssh-native"
+    },
+    {
+      "id": "files-native",
+      "module": "bundled:plugins/files-native"
+    },
+    {
+      "id": "file-icons-native",
+      "module": "bundled:plugins/file-icons-native"
+    },
+    {
+      "id": "git-native",
+      "module": "bundled:plugins/git-native"
+    },
+    {
+      "id": "history-native",
+      "module": "bundled:plugins/history-native"
+    },
+    {
+      "id": "shell-native",
+      "module": "bundled:plugins/shell-native"
+    },
+    {
+      "id": "containers-native",
+      "module": "bundled:plugins/containers-native"
+    },
+    {
+      "id": "http-native",
+      "module": "bundled:plugins/http-native"
+    },
+    {
+      "id": "updater-native",
+      "module": "bundled:plugins/updater-native"
+    },
+    {
+      "id": "session-native",
+      "module": "bundled:plugins/session-native"
+    },
+    {
+      "id": "session-query-native",
+      "module": "bundled:plugins/session-query-native"
+    },
+    {
+      "id": "ai-context-artifacts-native",
+      "module": "bundled:plugins/ai-context-artifacts-native"
+    },
+    {
+      "id": "mcp-native",
+      "module": "bundled:plugins/mcp-native"
+    },
+    {
+      "id": "mcp-server-native",
+      "module": "bundled:plugins/mcp-server-native"
+    },
+    {
+      "id": "search-sidebar",
+      "module": "bundled:plugins/search-sidebar"
+    },
+    {
+      "id": "explorer-sidebar",
+      "module": "bundled:plugins/explorer-sidebar"
+    },
+    {
+      "id": "source-control-sidebar",
+      "module": "bundled:plugins/source-control-sidebar"
+    },
+    {
+      "id": "ports-sidebar",
+      "module": "bundled:plugins/ports-sidebar"
+    },
+    {
+      "id": "header-native",
+      "module": "bundled:plugins/header-native"
+    },
+    {
+      "id": "command-palette-state-native",
+      "module": "bundled:plugins/command-palette-state-native"
+    },
+    {
+      "id": "command-palette-native",
+      "module": "bundled:plugins/command-palette-native"
+    },
+    {
+      "id": "settings-native",
+      "module": "bundled:plugins/settings-native"
+    },
+    {
+      "id": "statusbar-native",
+      "module": "bundled:plugins/statusbar-native"
+    },
+    {
+      "id": "rigs-commands",
+      "module": "bundled:plugins/rigs-commands"
+    },
+    {
+      "id": "markdown-surface",
+      "module": "bundled:plugins/markdown-surface"
+    },
+    {
+      "id": "preview-surface-native",
+      "module": "bundled:plugins/preview-surface-native"
+    },
+    {
+      "id": "git-surface",
+      "module": "bundled:plugins/git-surface"
+    },
+    {
+      "id": "ai-diff-surface",
+      "module": "bundled:plugins/ai-diff-surface"
+    },
+    {
+      "id": "ui-shell-native",
+      "module": "bundled:plugins/ui-shell-native"
+    },
+    {
+      "id": "plugin-manager-native",
+      "module": "bundled:plugins/plugin-manager-native"
+    },
+    {
+      "id": "onboarding-native",
+      "module": "bundled:plugins/onboarding-native"
+    },
+    {
+      "id": "onboarding-ui-native",
+      "module": "bundled:plugins/onboarding-ui-native"
+    },
+    {
+      "id": "onboarding-content-native",
+      "module": "bundled:plugins/onboarding-content-native"
+    },
+    {
+      "id": "about-native",
+      "module": "bundled:plugins/about-native"
+    },
+    {
+      "id": "appearance-settings",
+      "module": "bundled:plugins/appearance-settings"
+    },
+    {
+      "id": "models-settings",
+      "module": "bundled:plugins/models-settings"
+    },
+    {
+      "id": "shortcuts-settings",
+      "module": "bundled:plugins/shortcuts-settings"
+    },
+    {
+      "id": "editor-settings",
+      "module": "bundled:plugins/editor-settings"
+    },
+    {
+      "id": "general-settings",
+      "module": "bundled:plugins/general-settings"
+    },
+    {
+      "id": "languages-settings",
+      "module": "bundled:plugins/languages-settings"
+    },
+    {
+      "id": "terminal-settings",
+      "module": "bundled:plugins/terminal-settings"
+    },
+    {
+      "id": "terminal-surface-native",
+      "module": "bundled:plugins/terminal-surface-native"
+    },
+    {
+      "id": "terminal-workspace-footer-native",
+      "module": "bundled:plugins/terminal-workspace-footer-native"
+    },
+    {
+      "id": "editor-surface-native",
+      "module": "bundled:plugins/editor-surface-native"
+    },
+    {
+      "id": "browser-native",
+      "module": "bundled:plugins/browser-native"
+    },
+    {
+      "id": "lsp-native",
+      "module": "bundled:plugins/lsp-native"
+    },
+    {
+      "id": "coding-agent-native",
+      "module": "bundled:plugins/coding-agent-native"
+    },
+    {
+      "id": "ai-library-native",
+      "module": "bundled:plugins/ai-library-native"
+    },
+    {
+      "id": "ai-live-native",
+      "module": "bundled:plugins/ai-live-native"
+    },
+    {
+      "id": "ai-chat-native",
+      "module": "bundled:plugins/ai-chat-native"
+    },
+    {
+      "id": "selection-ask-ai-native",
+      "module": "bundled:plugins/selection-ask-ai-native"
+    },
+    {
+      "id": "managed-agent-runtime-native",
+      "module": "bundled:plugins/managed-agent-runtime-native"
+    },
+    {
+      "id": "agents-manager-native",
+      "module": "bundled:plugins/agents-manager-native"
+    },
+    {
+      "id": "skills-panel-native",
+      "module": "bundled:plugins/skills-panel-native"
+    },
+    {
+      "id": "trajectory-native",
+      "module": "bundled:plugins/trajectory-native"
+    }
+  ],
+  "patches": []
+}

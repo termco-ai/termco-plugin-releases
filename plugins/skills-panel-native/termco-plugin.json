@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 3,
+  "id": "skills-panel-native",
+  "name": "Agent Config Library",
+  "description": "Discovers, explains, enables, and adopts agents, skills, rules, snippets, and MCP servers from the active workspace.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": {
+    "renderer": "src/plugin.tsx"
+  },
+  "dependencies": {
+    "@hugeicons/core-free-icons": "^4.2.0",
+    "@hugeicons/react": "^1.1.7",
+    "react": "^19.2.7",
+    "@termco/ui": "1.0.0",
+    "@termco/ai-library-base": "1.0.0",
+    "@termco/events-base": "1.0.0",
+    "@termco/files-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/ui-sidebar-base": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  },
+  "activation": "eager"
+}

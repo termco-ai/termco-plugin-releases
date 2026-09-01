@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 3,
+  "id": "models-native",
+  "name": "Built-in AI Models",
+  "description": "Owns the replaceable provider registry, model catalogue, defaults, endpoint rules, reasoning metadata, context limits, and pricing metadata.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/renderer.ts" },
+  "dependencies": {
+    "@termco/ai-models-base": "1.0.0",
+    "@termco/kernel": "1.0.0"
+  },
+  "activation": "eager"
+}

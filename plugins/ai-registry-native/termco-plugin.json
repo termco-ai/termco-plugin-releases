@@ -1,0 +1,15 @@
+{
+  "schemaVersion": 3,
+  "id": "ai-registry-native",
+  "name": "AI Tool Runtime",
+  "description": "Owns AI tool and toolset registration plus the single durable execution authority used by every caller.",
+  "category": "Intelligence",
+  "version": "1.0.0",
+  "entrypoints": { "renderer": "src/plugin.ts" },
+  "dependencies": {
+    "@termco/ai-tools-base": "1.0.0",
+    "@termco/kernel": "1.0.0",
+    "@termco/session-base": "1.0.0"
+  },
+  "activation": "eager"
+}

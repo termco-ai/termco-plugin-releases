@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: Report an official plugin bug
+    url: https://github.com/termco-ai/termco/issues/new?template=02-plugin-bug.yml
+    about: Report user-facing plugin problems in the central Termco tracker.
+  - name: Propose a plugin
+    url: https://github.com/termco-ai/termco/discussions/categories/plugin-ideas
+    about: Start with the workflow and desired outcome in Termco Plugin ideas.
+  - name: Ask a support question
+    url: https://github.com/termco-ai/termco/discussions/categories/q-a
+    about: Ask installation, update, and usage questions in the Termco community.
