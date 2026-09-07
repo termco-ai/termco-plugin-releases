@@ -3,6 +3,7 @@ import type {
   AgentHooksCapability,
 } from "@termco/agents-base";
 import type { AiSessionsCapability } from "@termco/ai-sessions-base";
+import { APPLICATION_BRANDING_SERVICE, type ApplicationBrandingCapability } from "@termco/application-base";
 import type { BrowserTabsCapability } from "@termco/browser-base";
 import type { DesktopWindowCapability } from "@termco/desktop-base";
 import type {
@@ -275,6 +276,7 @@ const plugin: PluginModule = {
     UI_HEADER_ITEMS_SERVICE,
   ],
   optionalInject: [
+    APPLICATION_BRANDING_SERVICE,
     SHORTCUTS_REGISTRY_SERVICE,
     AGENTS_ACTIVITY_SERVICE,
     DESKTOP_WINDOW_SERVICE,
@@ -378,6 +380,7 @@ const plugin: PluginModule = {
     };
     await context.effect(() =>
       installHeaderDependencies({
+        branding: live<ApplicationBrandingCapability>(APPLICATION_BRANDING_SERVICE, { logoUrl: "" }),
         agentHooks: live(AGENTS_TERMINAL_HOOKS_SERVICE, EMPTY_AGENT_HOOKS),
         fileIcons,
         languages: live(EDITOR_LANGUAGES_SERVICE, EMPTY_LANGUAGES),

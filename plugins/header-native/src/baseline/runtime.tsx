@@ -1,4 +1,5 @@
 import type { AgentHooksCapability } from "@termco/agents-base";
+import type { ApplicationBrandingCapability } from "@termco/application-base";
 import type { EditorLanguagesCapability } from "@termco/editor-base";
 import type { WorkspaceFileIconsCapability } from "@termco/files-base";
 import type { ShortcutRegistryCapability } from "@termco/shortcuts-base";
@@ -6,6 +7,7 @@ import type { SshClientCapability } from "@termco/ssh-base";
 import ui from "@termco/ui";
 
 export interface BaselineHeaderDependencies {
+  branding?: ApplicationBrandingCapability;
   agentHooks: AgentHooksCapability;
   fileIcons: WorkspaceFileIconsCapability;
   languages: EditorLanguagesCapability;
