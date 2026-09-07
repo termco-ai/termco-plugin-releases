@@ -136,3 +136,113 @@ describe("AI Tools: Files", () => {
     });
   });
 });
+
+
+describe("approved directory read/search access", () => {
+  const input = { path: "/etc/nginx", target: "Local computer", reason: "Inspect the nginx configuration" };
+  function setup() {
+    const source = provider({ "/etc/nginx/nginx.conf": "server {}" });
+    vi.mocked(source.files.stat).mockResolvedValue({ kind: "dir" });
+    const context = runtime({ getSessionId: () => "chat-a" });
+    const set = new FileToolSet(source.files);
+    return { ...source, context, set, fs: set.fsTools(context), search: set.searchTools(context) };
+  }
+
+  it("blocks protected operations until access is granted and supports revocation", async () => {
+    const { files, fs, search } = setup();
+    for (const [tool, args] of [
+      [fs.read_file, { path: "/etc/nginx/nginx.conf" }],
+      [fs.list_directory, { path: "/etc/nginx" }],
+      [fs.file_info, { path: "/etc/nginx" }],
+      [search.grep, { root: "/etc/nginx", pattern: "server" }],
+      [search.glob, { root: "/etc/nginx", pattern: "*.conf" }],
+    ] as const) expect(await tool.execute(args)).toMatchObject({ requires_directory_approval: true, target: "Local computer" });
+    expect(files.readFile).not.toHaveBeenCalled();
+    expect(files.readDir).not.toHaveBeenCalled();
+    expect(files.grep).not.toHaveBeenCalled();
+    expect(files.glob).not.toHaveBeenCalled();
+    expect(fs.request_directory_access.alwaysNeedsApproval).toBe(true);
+    expect(await fs.request_directory_access.execute(input)).toMatchObject({ ok: true, scope: "current-chat", access: "read-and-search" });
+    expect(await fs.read_file.execute({ path: "/etc/nginx/nginx.conf" })).toMatchObject({ content: "server {}" });
+    await fs.list_directory.execute({ path: "/etc/nginx" });
+    await search.grep.execute({ root: "/etc/nginx", pattern: "server" });
+    expect(files.readDir).toHaveBeenCalled();
+    expect(files.grep).toHaveBeenCalled();
+    await fs.revoke_directory_access.execute({ path: "/etc/nginx" });
+    expect(await fs.read_file.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("error");
+  });
+
+  it("retains approval across turns but isolates chats and remote targets", async () => {
+    const { set, fs } = setup();
+    await fs.request_directory_access.execute(input);
+    const next = runtime({ getSessionId: () => "chat-a" });
+    expect(await set.fsTools(next).read_file.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("content");
+    for (const other of [
+      runtime({ getSessionId: () => "chat-b" }),
+      runtime({ getSessionId: () => "chat-a", getWorkspaceEnv: () => ({ kind: "ssh", connectionId: "server", host: "server" }) }),
+      runtime(),
+    ]) expect(await set.fsTools(other).read_file.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("error");
+    const remote = runtime({ getSessionId: () => "chat-a", getWorkspaceEnv: () => ({ kind: "ssh", connectionId: "server", host: "server" }) });
+    const remoteTools = set.fsTools(remote);
+    expect(await remoteTools.request_directory_access.execute(input)).toHaveProperty("error");
+    await remoteTools.request_directory_access.execute({ ...input, target: "SSH: server:22" });
+    expect(await remoteTools.read_file.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("content");
+    remote.getWorkspaceEnv = () => ({ kind: "ssh", connectionId: "different", host: "server" });
+    expect(await remoteTools.read_file.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("error");
+  });
+
+  it("does not grant siblings, traversal, secrets, or mutations", async () => {
+    const { fs, files } = setup();
+    await fs.request_directory_access.execute(input);
+    for (const path of ["/etc/nginx-other/a", "/etc/nginx/../hosts", "/etc/NGINX/a", "/etc/nginx/.env", "/etc/nginx/tls.key", "/etc/nginx/.ssh/config"]) {
+      expect(await fs.read_file.execute({ path })).toHaveProperty("error");
+    }
+    await fs.request_directory_access.execute({ ...input, path: "/etc" });
+    expect(await fs.read_file.execute({ path: "/etc/shadow" })).toHaveProperty("error");
+    expect(await fs.write_file.execute({ path: "/etc/nginx/nginx.conf", content: "changed" })).toHaveProperty("error");
+    expect(await fs.delete.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("error");
+    expect(await fs.copy.execute({ sources: ["/etc/nginx/nginx.conf"], destDir: "/p" })).toHaveProperty("error");
+    expect(files.copy).not.toHaveBeenCalled();
+    expect(files.writeFile).not.toHaveBeenCalled();
+    expect(files.delete).not.toHaveBeenCalled();
+  });
+
+  it("requires a verified directory and rejects redirection and cancellation", async () => {
+    const { fs, files } = setup();
+    expect(await fs.request_directory_access.execute({ ...input, path: "nginx" })).toHaveProperty("error");
+    vi.mocked(files.stat).mockResolvedValue({ kind: "file" });
+    expect(await fs.request_directory_access.execute(input)).toHaveProperty("error");
+    vi.mocked(files.stat).mockResolvedValue({ kind: "dir" });
+    vi.mocked(files.canonicalize).mockResolvedValue("/etc/other");
+    expect(await fs.request_directory_access.execute(input)).toMatchObject({ canonical_path: "/etc/other" });
+    vi.mocked(files.canonicalize).mockRejectedValue(new Error("offline"));
+    expect(await fs.request_directory_access.execute(input)).toHaveProperty("error");
+    vi.mocked(files.canonicalize).mockImplementation(async (path) => path);
+    const controller = new AbortController(); controller.abort();
+    expect(await fs.request_directory_access.execute(input, { signal: controller.signal })).toHaveProperty("error");
+    expect(await fs.read_file.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("error");
+  });
+
+  it("fails closed for symlink escapes and unverifiable paths after approval", async () => {
+    const { fs, files } = setup();
+    await fs.request_directory_access.execute(input);
+    vi.mocked(files.canonicalize).mockResolvedValue("/etc/hosts");
+    expect(await fs.read_file.execute({ path: "/etc/nginx/link" })).toHaveProperty("error");
+    vi.mocked(files.canonicalize).mockResolvedValue("/public/file");
+    expect(await fs.read_file.execute({ path: "/etc/nginx/link" })).toHaveProperty("error");
+    vi.mocked(files.canonicalize).mockRejectedValue(new Error("offline"));
+    expect(await fs.read_file.execute({ path: "/etc/nginx/nginx.conf" })).toHaveProperty("error");
+    expect(files.readFile).not.toHaveBeenCalled();
+  });
+
+  it("filters sensitive and out-of-scope search results", async () => {
+    const { fs, files, search } = setup();
+    await fs.request_directory_access.execute(input);
+    const paths = ["/etc/nginx/nginx.conf", "/etc/nginx/.env", "/etc/hosts", "/etc/nginx/link"];
+    vi.mocked(files.canonicalize).mockImplementation(async (path) => path.endsWith("/link") ? "/etc/shadow" : path);
+    vi.mocked(files.grep).mockResolvedValue({ hits: paths.map((path) => ({ path, line: 1, text: "match" })) });
+    vi.mocked(files.glob).mockResolvedValue({ hits: paths });
+    expect(await search.grep.execute({ root: "/etc/nginx", pattern: "match" })).toMatchObject({ hits: [{ path: "/etc/nginx/nginx.conf" }] });
+    expect(await search.glob.execute({ root: "/etc/nginx", pattern: "**/*" })).toMatchObject({ hits: ["/etc/nginx/nginx.conf"] });
+  });
+});

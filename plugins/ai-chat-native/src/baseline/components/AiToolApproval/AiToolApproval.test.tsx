@@ -203,3 +203,21 @@ describe("AiToolApproval", () => {
     expect(screen.getByText("/other.ts")).toBeInTheDocument();
   });
 });
+
+
+it("shows the folder, target and scope and requires an individual access decision", () => {
+  const onRespond = vi.fn();
+  render(<AiToolApproval
+    part={makePart({ type: "tool-request_directory_access", input: { path: "/etc/nginx", target: "SSH: root@server:22", reason: "Inspect nginx configuration" } })}
+    toolName="request_directory_access" onRespond={onRespond} allowRemember
+  />);
+  expect(screen.getByText("/etc/nginx")).toBeInTheDocument();
+  expect(screen.getByText("SSH: root@server:22")).toBeInTheDocument();
+  expect(screen.getByText("Inspect nginx configuration")).toBeInTheDocument();
+  expect(screen.getByText(/subfolders in this chat/)).toBeInTheDocument();
+  expect(screen.queryByRole("button", { name: /Always allow/ })).not.toBeInTheDocument();
+  fireEvent.click(screen.getByRole("button", { name: /Don’t allow/ }));
+  expect(onRespond).toHaveBeenLastCalledWith(false);
+  fireEvent.click(screen.getByRole("button", { name: /Allow folder access/ }));
+  expect(onRespond).toHaveBeenLastCalledWith(true);
+});

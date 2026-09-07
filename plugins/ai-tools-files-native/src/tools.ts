@@ -7,6 +7,8 @@ import type {
 import type { WorkspaceFilesCapability } from "@termco/files-base";
 import type { WorkspaceEnv } from "@termco/workspace-base";
 import { checkReadableCanonical, checkWritableCanonical } from "./security";
+import { DirectoryReadAccess, resolveFilePath as resolvePath } from "./directoryAccess";
+import { isWithinDirectory } from "./security/scope";
 
 const EMPTY = { type: "object", properties: {}, additionalProperties: false };
 const PATH = { type: "string", description: "Absolute path, or relative to the active terminal directory." };
@@ -37,13 +39,6 @@ function environment(runtime: AiToolRuntime): WorkspaceEnv {
   return runtime.getWorkspaceEnv?.() ?? { kind: "local" };
 }
 
-function resolvePath(path: string, runtime: AiToolRuntime): string {
-  if (path.startsWith("/") || /^[a-zA-Z]:[\\/]/.test(path)) return path;
-  const cwd = runtime.getCwd?.();
-  if (!cwd) throw new Error(`cannot resolve relative path "${path}": no active terminal cwd. Pass an absolute path.`);
-  const separator = cwd.includes("\\") && !cwd.includes("/") ? "\\" : "/";
-  return cwd.endsWith(separator) ? `${cwd}${path}` : `${cwd}${separator}${path}`;
-}
 
 function cache(runtime: AiToolRuntime): Map<string, { size: number; hash: number }> {
   if (runtime.readCache) return runtime.readCache;
@@ -79,7 +74,10 @@ function searchRoot(raw: unknown, runtime: AiToolRuntime): { ok: true; path: str
 }
 
 export class FileToolSet {
-  constructor(private readonly files: WorkspaceFilesCapability) {}
+  private readonly access: DirectoryReadAccess;
+  constructor(private readonly files: WorkspaceFilesCapability) {
+    this.access = new DirectoryReadAccess(files);
+  }
 
   contributions(): AiToolContribution[] {
     return [
@@ -111,18 +109,19 @@ export class FileToolSet {
 
   fsTools(runtime: AiToolRuntime): Record<string, AiToolDefinition> {
     return {
+      ...this.access.tools(runtime),
       read_file: definition(
-        "Read a UTF-8 text file, with line windowing and a 25KB response cap. Refuses binary, oversized, and sensitive files. An unchanged repeat read returns only unchanged=true.",
+        "Read a UTF-8 text file, with line windowing and a 25KB response cap. Refuses binary, oversized, and sensitive files. If a protected directory is blocked, request_directory_access can ask the user for read/search access. An unchanged repeat read returns only unchanged=true.",
         { type: "object", properties: { path: PATH, offset: { type: "integer", minimum: 0 }, limit: { type: "integer", minimum: 1, maximum: 10000 } }, required: ["path"], additionalProperties: false },
         async ({ path, offset, limit }) => {
           let requested: string;
           try { requested = resolvePath(String(path ?? ""), runtime); }
           catch (error) { return { error: String(error), path }; }
-          const safety = await checkReadableCanonical(requested, this.canonicalize(runtime));
-          if (!safety.ok) return { error: safety.reason, path: requested };
-          const absolute = safety.canonical;
+          const prepared = await this.access.readable(requested, runtime);
+          if (!prepared.ok) return prepared.result;
+          const absolute = prepared.path;
           try {
-            const result = await this.files.readFile(absolute, environment(runtime)) as ReadResult;
+            const result = await this.files.readFile(absolute, prepared.workspace) as ReadResult;
             if (result.kind === "binary") return { error: "binary file refused", path: absolute, size: result.size };
             if (result.kind === "toolarge") return { error: `file too large (${result.size} bytes, limit ${result.limit ?? "provider"})`, path: absolute };
             if (result.kind === "missing") return { error: "file not found", path: absolute };
@@ -153,9 +152,9 @@ export class FileToolSet {
       list_directory: definition(
         "List immediate non-hidden files and directories. Use glob for recursive discovery.",
         { type: "object", properties: { path: PATH }, required: ["path"], additionalProperties: false },
-        async ({ path }) => this.withReadable(runtime, path, async (absolute) => ({
+        async ({ path }) => this.withReadable(runtime, path, async (absolute, workspace) => ({
           path: absolute,
-          entries: (await this.files.readDir(absolute, false, false, environment(runtime))).map(({ name, kind }) => ({ name, kind })),
+          entries: (await this.files.readDir(absolute, false, false, workspace)).map(({ name, kind }) => ({ name, kind })),
         })),
       ),
       write_file: definition(
@@ -205,7 +204,7 @@ export class FileToolSet {
       file_info: definition(
         "Return size, modification time, and file/directory/symlink kind without reading contents.",
         { type: "object", properties: { path: PATH }, required: ["path"], additionalProperties: false },
-        async ({ path }) => this.withReadable(runtime, path, async (absolute) => ({ path: absolute, ...(await this.files.stat(absolute, environment(runtime)) as object) })),
+        async ({ path }) => this.withReadable(runtime, path, async (absolute, workspace) => ({ path: absolute, ...(await this.files.stat(absolute, workspace) as object) })),
       ),
       move: definition(
         "Move or rename a file or directory through the shared workspace provider. Always asks for approval.",
@@ -231,7 +230,7 @@ export class FileToolSet {
           if (!destination.ok) return destination.result;
           const absolute: string[] = [];
           for (const source of Array.isArray(sources) ? sources : []) {
-            const prepared = await this.readable(runtime, source);
+            const prepared = await this.readable(runtime, source, false);
             if (!prepared.ok) return prepared.result;
             absolute.push(prepared.path);
           }
@@ -286,14 +285,18 @@ export class FileToolSet {
   searchTools(runtime: AiToolRuntime): Record<string, AiToolDefinition> {
     return {
       grep: definition(
-        "Search file contents with a regular expression, honoring gitignore. Returns clipped path/line/text matches.",
+        "Search file contents with a regular expression, honoring gitignore. Returns clipped path/line/text matches. For protected directories, request_directory_access first; approval applies only to the current chat and target.",
         { type: "object", properties: { pattern: { type: "string" }, root: PATH, glob: { type: "array", items: { type: "string" } }, case_insensitive: { type: "boolean" }, max_results: { type: "integer", minimum: 1, maximum: 500 } }, required: ["pattern"], additionalProperties: false },
         async ({ pattern, root, glob, case_insensitive, max_results }) => {
           const prepared = await this.searchRoot(runtime, root);
           if (!prepared.ok) return prepared.result;
           try {
-            const result = await this.files.grep({ pattern: String(pattern ?? ""), root: prepared.path, glob: Array.isArray(glob) ? glob.map(String) : undefined, caseInsensitive: case_insensitive === true, maxResults: typeof max_results === "number" ? Math.min(max_results, 500) : 30 }, environment(runtime)) as { hits?: Array<{ path: string; rel?: string; line: number; text: string }>; truncated?: boolean; files_scanned?: number };
-            return { root: prepared.path, hits: (result.hits ?? []).map((hit) => ({ ...hit, text: clipLine(hit.text) })), truncated: result.truncated ?? false, files_scanned: result.files_scanned };
+            const result = await this.files.grep({ pattern: String(pattern ?? ""), root: prepared.path, glob: Array.isArray(glob) ? glob.map(String) : undefined, caseInsensitive: case_insensitive === true, maxResults: typeof max_results === "number" ? Math.min(max_results, 500) : 30 }, prepared.workspace) as { hits?: Array<{ path: string; rel?: string; line: number; text: string }>; truncated?: boolean; files_scanned?: number };
+            const hits = [];
+            for (const hit of result.hits ?? []) {
+              if (await this.searchHitAllowed(hit.path, prepared)) hits.push({ ...hit, text: clipLine(hit.text) });
+            }
+            return { root: prepared.path, hits, truncated: result.truncated ?? false, files_scanned: result.files_scanned };
           } catch (error) { return { error: String(error), root: prepared.path }; }
         },
       ),
@@ -304,20 +307,23 @@ export class FileToolSet {
           const prepared = await this.searchRoot(runtime, root);
           if (!prepared.ok) return prepared.result;
           try {
-            const result = await this.files.glob({ pattern: String(pattern ?? ""), root: prepared.path, maxResults: typeof max_results === "number" ? max_results : undefined }, environment(runtime)) as { hits?: unknown[]; truncated?: boolean };
-            return { root: prepared.path, hits: result.hits ?? [], truncated: result.truncated ?? false };
+            const result = await this.files.glob({ pattern: String(pattern ?? ""), root: prepared.path, maxResults: typeof max_results === "number" ? max_results : undefined }, prepared.workspace) as { hits?: Array<string | {path: string; rel?: string}>; truncated?: boolean };
+            const hits = [];
+            for (const hit of result.hits ?? []) {
+              if (await this.searchHitAllowed(typeof hit === "string" ? hit : hit.path, prepared)) hits.push(hit);
+            }
+            return { root: prepared.path, hits, truncated: result.truncated ?? false };
           } catch (error) { return { error: String(error), root: prepared.path }; }
         },
       ),
     };
   }
 
-  private async readable(runtime: AiToolRuntime, path: unknown): Promise<{ ok: true; path: string } | { ok: false; result: object }> {
+  private async readable(runtime: AiToolRuntime, path: unknown, allowGrants = true) {
     let requested: string;
     try { requested = resolvePath(String(path ?? ""), runtime); }
-    catch (error) { return { ok: false, result: { error: String(error), path } }; }
-    const safety = await checkReadableCanonical(requested, this.canonicalize(runtime));
-    return safety.ok ? { ok: true, path: safety.canonical } : { ok: false, result: { error: safety.reason, path: requested } };
+    catch (error) { return { ok: false as const, result: { error: String(error), path } }; }
+    return this.access.readable(requested, runtime, allowGrants);
   }
 
   private async writable(runtime: AiToolRuntime, path: unknown): Promise<{ ok: true; path: string } | { ok: false; result: object }> {
@@ -328,18 +334,24 @@ export class FileToolSet {
     return safety.ok ? { ok: true, path: safety.canonical } : { ok: false, result: { error: safety.reason, path: requested } };
   }
 
-  private async withReadable(runtime: AiToolRuntime, path: unknown, action: (absolute: string) => Promise<unknown>): Promise<unknown> {
+  private async withReadable(runtime: AiToolRuntime, path: unknown, action: (absolute: string, workspace: WorkspaceEnv) => Promise<unknown>): Promise<unknown> {
     const prepared = await this.readable(runtime, path);
     if (!prepared.ok) return prepared.result;
-    try { return await action(prepared.path); }
+    try { return await action(prepared.path, prepared.workspace); }
     catch (error) { return { error: String(error), path: prepared.path }; }
   }
 
-  private async searchRoot(runtime: AiToolRuntime, root: unknown): Promise<{ ok: true; path: string } | { ok: false; result: object }> {
+  private async searchRoot(runtime: AiToolRuntime, root: unknown) {
     const resolved = searchRoot(root, runtime);
-    if (!resolved.ok) return { ok: false, result: { error: resolved.error } };
-    const safety = await checkReadableCanonical(resolved.path, this.canonicalize(runtime));
-    return safety.ok ? { ok: true, path: safety.canonical } : { ok: false, result: { error: safety.reason, root: resolved.path } };
+    if (!resolved.ok) return { ok: false as const, result: { error: resolved.error } };
+    return this.access.readable(resolved.path, runtime);
+  }
+
+  private async searchHitAllowed(path: string, scope: {path: string; workspace: WorkspaceEnv; approvedRoots: readonly string[]}): Promise<boolean> {
+    const absolute = resolvePath(path, { getCwd: () => scope.path });
+    if (!isWithinDirectory(absolute, scope.path)) return false;
+    const checked = await checkReadableCanonical(absolute, (value) => this.files.canonicalize(value, scope.workspace), scope.approvedRoots);
+    return checked.ok && isWithinDirectory(checked.canonical, scope.path);
   }
 
   private async edit(runtime: AiToolRuntime, path: unknown, edits: Array<{ old_string: string; new_string: string; replace_all: boolean }>, kind: "edit" | "multi_edit"): Promise<unknown> {

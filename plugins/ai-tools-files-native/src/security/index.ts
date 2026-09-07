@@ -1,9 +1,15 @@
+import { isWithinDirectory } from "./scope";
 import { basename, comparisonForm, isUnderProtected } from "./comparison";
 import { PROTECTED_DIRS, SECRET_BASENAME_PATTERNS, WRITE_DENY_PREFIXES } from "./patterns";
 
 export type SafetyResult = { ok: true } | { ok: false; reason: string };
 
-export function checkReadable(path: string): SafetyResult {
+const APPROVABLE_DIRECTORIES = new Set([
+  "/etc", "/private/etc", "/proc", "/sys", "/var/db", "/var/root",
+  "/private/var/db", "/private/var/root",
+]);
+
+export function checkReadable(path: string, approvedRoots: readonly string[] = []): SafetyResult {
   if (typeof path !== "string" || !path) return { ok: false, reason: "Refused: empty path." };
   if (/[\x00-\x1f]/.test(path)) return { ok: false, reason: "Refused: path contains control bytes." };
   const name = basename(path);
@@ -11,7 +17,9 @@ export function checkReadable(path: string): SafetyResult {
     return { ok: false, reason: `Refused: "${name}" matches a sensitive-file pattern.` };
   }
   const comparison = comparisonForm(path);
-  const protectedDirectory = PROTECTED_DIRS.find((directory) => isUnderProtected(comparison, directory));
+  const protectedDirectory = PROTECTED_DIRS.find((directory) =>
+    isUnderProtected(comparison, directory) &&
+    !(APPROVABLE_DIRECTORIES.has(directory) && approvedRoots.some((root) => isWithinDirectory(path, root))));
   return protectedDirectory
     ? { ok: false, reason: `Refused: path is inside a protected directory (${protectedDirectory.slice(1)}).` }
     : { ok: true };
@@ -30,15 +38,21 @@ export function checkWritable(path: string): SafetyResult {
 
 type Canonical = (path: string) => Promise<string>;
 
-export async function checkReadableCanonical(path: string, canonicalize: Canonical): Promise<{ ok: true; canonical: string } | { ok: false; reason: string }> {
-  const initial = checkReadable(path);
+export async function checkReadableCanonical(path: string, canonicalize: Canonical, approvedRoots: readonly string[] = []): Promise<{ ok: true; canonical: string } | { ok: false; reason: string }> {
+  const initial = checkReadable(path, approvedRoots);
   if (!initial.ok) return initial;
+  const usesGrant = !checkReadable(path).ok;
   try {
     const canonical = await canonicalize(path);
-    const result = checkReadable(canonical);
+    if (usesGrant && !approvedRoots.some((root) => isWithinDirectory(path, root) && isWithinDirectory(canonical, root))) {
+      return { ok: false, reason: "Refused: symlink leaves the approved directory." };
+    }
+    const result = checkReadable(canonical, approvedRoots);
     return result.ok ? { ok: true, canonical } : result;
   } catch {
-    return { ok: true, canonical: path };
+    return usesGrant
+      ? { ok: false, reason: "Refused: cannot verify the canonical path inside the approved directory." }
+      : { ok: true, canonical: path };
   }
 }
 

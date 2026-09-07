@@ -17,6 +17,16 @@ export function PreviewBlock({
   questionSelections?: Record<number, string>;
   onQuestionSelection?: (questionIndex: number, answer: string) => void;
 }) {
+  if (toolName === "request_directory_access") {
+    return (
+      <div className="space-y-2 text-xs">
+        <div className="font-medium text-foreground">{String(input.target ?? "")}</div>
+        <div className="break-all rounded-md bg-muted/60 p-2 font-mono">{String(input.path ?? "")}</div>
+        <p className="whitespace-pre-wrap text-foreground">{String(input.reason ?? "")}</p>
+        <p className="text-muted-foreground">Allow reading and searching this folder and its subfolders in this chat. You can ask to revoke access at any time.</p>
+      </div>
+    );
+  }
   // Coding-agent plan-mode exit: show the proposed plan (Build / Revise footer).
   if (toolName === "ExitPlanMode" || toolName === "exit_plan_mode") {
     const plan = typeof input.plan === "string" ? input.plan : "";

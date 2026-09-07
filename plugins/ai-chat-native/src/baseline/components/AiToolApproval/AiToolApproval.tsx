@@ -38,6 +38,7 @@ type Props = {
 
 const TOOL_META: Record<string, { label: string; icon: typeof FilePlusIcon }> =
   {
+    request_directory_access: { label: "Allow folder access", icon: FolderAddIcon },
     write_file: { label: "Write file", icon: FilePlusIcon },
     edit: { label: "Edit file", icon: FileEditIcon },
     multi_edit: { label: "Edit file (batch)", icon: Edit02Icon },
@@ -253,7 +254,7 @@ function AiToolApprovalImpl({
             Trust this site
           </Button>
         )}
-        {allowRemember && !isBrowserAction && !question && (
+        {allowRemember && !isBrowserAction && !question && toolName !== "request_directory_access" && (
           <Button
             size="sm"
             variant="ghost"
@@ -271,7 +272,7 @@ function AiToolApprovalImpl({
             className="h-7 gap-1.5 text-xs"
           >
             <HugeiconsIcon icon={Tick02Icon} size={12} strokeWidth={2} />
-            Approve
+            {toolName === "request_directory_access" ? "Allow folder access" : "Approve"}
           </Button>
         ) : null}
       </div>

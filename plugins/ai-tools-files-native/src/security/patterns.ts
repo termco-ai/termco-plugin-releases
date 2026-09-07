@@ -1,4 +1,6 @@
 export const SECRET_BASENAME_PATTERNS: RegExp[] = [
+  /^(?:shadow|gshadow)(?:-|[.\s:]|$)/i,
+  /^master\.passwd(?:[.\s:]|$)/i,
   /^\.env(\..+)?(?:[.\s:]|$)/i,
   /^.*\.pem(?:[.\s:]|$)/i,
   /^.*\.key(?:[.\s:]|$)/i,
@@ -11,7 +13,7 @@ export const SECRET_BASENAME_PATTERNS: RegExp[] = [
   /^id_(rsa|dsa|ecdsa|ed25519)([._-].*)?(?:[.\s:]|$)/i,
   /^known_hosts(?:[.\s:]|$)/i,
   /^authorized_keys(?:[.\s:]|$)/i,
-  /^htpasswd(?:[.\s:]|$)/i,
+  /^\.?htpasswd(?:[.\s:]|$)/i,
   /^\.netrc(?:[.\s:]|$)/i,
   /^_netrc(?:[.\s:]|$)/i,
   /^credentials(?:[.\s:]|$)/i,
