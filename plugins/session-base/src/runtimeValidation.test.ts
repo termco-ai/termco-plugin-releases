@@ -40,6 +40,7 @@ const coreFixtures: readonly Record<string, unknown>[] = [
   envelope("session/policy", { approval: "ask", sandbox: "workspace", source: "user" }),
   envelope("session/pin", { pinned: true }),
   envelope("session/label", { label: "important", operation: "add" }),
+  envelope("session/workspace", { rootPath: "/repo/.git/review", source: "tool" }),
   envelope("session/rig", { rigId: "rig-2", source: "user" }),
   envelope("turn/start", { turn: 1, cause: "user" }),
   envelope("turn/suspend", {
@@ -458,4 +459,10 @@ describe("session runtime contracts", () => {
     });
     expect(report.suspension).toBeUndefined();
   });
+});
+
+it("validates durable workspace transitions and explicit clearing", () => {
+  expect(() => parseSessionEvent(envelope("session/workspace", { rootPath: "/review", source: "tool" }))).not.toThrow();
+  expect(() => parseSessionEvent(envelope("session/workspace", { rootPath: null, source: "user" }))).not.toThrow();
+  expect(() => parseSessionEvent(envelope("session/workspace", { rootPath: 42, source: "tool" }))).toThrow();
 });

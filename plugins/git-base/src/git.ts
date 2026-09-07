@@ -103,6 +103,11 @@ export interface GitBranchListResult {
   branches: GitBranchEntry[];
 }
 
+export interface GitReviewWorktreeResult {
+  path: string;
+  reused: boolean;
+}
+
 /** Complete, replaceable application-wide Git provider contract. */
 export interface GitCapability {
   resolveRepo(cwd: string, workspace: WorkspaceEnv): Promise<GitRepoInfo | null>;
@@ -124,4 +129,14 @@ export interface GitCapability {
   listBranches(repoRoot: string, workspace: WorkspaceEnv): Promise<GitBranchListResult>;
   checkoutBranch(repoRoot: string, branch: string, workspace: WorkspaceEnv): Promise<void>;
   remoteUrl(repoRoot: string, name: string, workspace: WorkspaceEnv): Promise<string | null>;
+  /** Fetch an exact hosted-review ref and expose it in a detached worktree
+   * under Git's private common directory. The active checkout is untouched. */
+  prepareReviewWorktree?(
+    repoRoot: string,
+    remoteName: string,
+    ref: string,
+    expectedSha: string,
+    key: string,
+    workspace: WorkspaceEnv,
+  ): Promise<GitReviewWorktreeResult>;
 }

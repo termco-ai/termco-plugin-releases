@@ -57,6 +57,8 @@ function boundedConcat(
 
 /** Per-call output shaping: raise the byte cap and/or keep the tail (logs). */
 export interface RunOpts {
+  env?: NodeJS.ProcessEnv;
+  waiting?: () => boolean;
   /** Max bytes retained per stream (default {@link MAX_OUTPUT_BYTES}). */
   maxBytes?: number;
   /** On overflow keep the LAST bytes instead of the first — correct for logs. */
@@ -81,7 +83,7 @@ export function runCli(
     let child;
     try {
       child = spawn(bin, args, {
-        env: { ...process.env, ...HARDENED_ENV },
+        env: { ...process.env, ...opts.env, ...HARDENED_ENV },
         stdio: ["ignore", "pipe", "pipe"],
       });
     } catch {
@@ -110,7 +112,7 @@ export function runCli(
     ) => {
       if (settled) return;
       settled = true;
-      clearTimeout(timer);
+      clearInterval(timer);
       const out = boundedConcat(outChunks, cap, keepTail);
       const err = boundedConcat(errChunks, cap, keepTail);
       resolve({
@@ -123,10 +125,16 @@ export function runCli(
       });
     };
 
-    const timer = setTimeout(() => {
+    let remaining = dur;
+    let lastTick = Date.now();
+    const timer = setInterval(() => {
+      const now = Date.now();
+      if (!opts.waiting?.()) remaining -= now - lastTick;
+      lastTick = now;
+      if (remaining > 0) return;
       child.kill("SIGKILL");
       settle(null, true, false);
-    }, dur);
+    }, 250);
 
     // ENOENT (binary not installed) surfaces here rather than the try/catch.
     child.on("error", () => settle(null, false, true));

@@ -154,3 +154,32 @@ describe("AI Tools: Terminal", () => {
     });
   });
 });
+
+it("closes the provider-owned shell on cancellation and opens a fresh handle for the next call", async () => {
+  let finish!: (value: unknown) => void;
+  const provider = shell({ sessionRun: vi.fn(() => new Promise((resolve) => { finish = resolve; })) });
+  const tools = new TerminalToolSet(provider).shellTools(runtime());
+  const controller = new AbortController();
+  const first = tools.bash_run.execute({ command: "sleep 60" }, { signal: controller.signal });
+  await vi.waitFor(() => expect(provider.sessionRun).toHaveBeenCalledOnce());
+  controller.abort(new Error("cancelled"));
+  expect(provider.sessionClose).toHaveBeenCalledWith(7);
+  finish({ exit_code: null });
+  await first;
+  vi.mocked(provider.sessionRun).mockResolvedValue({ exit_code: 0 });
+  await tools.bash_run.execute({ command: "pwd" });
+  expect(provider.sessionOpen).toHaveBeenCalledTimes(2);
+});
+
+it("waits for the new working directory to become durable before completing a shell tool", async () => {
+  let persist!: () => void;
+  const setWorkspaceFolder = vi.fn(() => new Promise<void>((resolve) => { persist = resolve; }));
+  const tools = new TerminalToolSet(shell()).shellTools(runtime({ setWorkspaceFolder }));
+  let completed = false;
+  const running = Promise.resolve(tools.bash_run.execute({ command: "cd next" })).then(() => { completed = true; });
+  await vi.waitFor(() => expect(setWorkspaceFolder).toHaveBeenCalledWith("/project/next"));
+  expect(completed).toBe(false);
+  persist();
+  await running;
+  expect(completed).toBe(true);
+});

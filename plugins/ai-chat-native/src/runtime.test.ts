@@ -231,6 +231,7 @@ describe("AI session persistence", () => {
     await ensureOwnedSession("fresh-session", {
       title: "New chat",
       rigId: "rig-a",
+      workspaceRoot: "/repo",
       createdAt: 123,
     });
 
@@ -243,6 +244,10 @@ describe("AI session persistence", () => {
         backend: "chat",
         fidelity: "full",
         rigId: "rig-a",
+        workspace: {
+          rootHash: expect.stringMatching(/^[a-f0-9]{64}$/),
+          rootPath: "/repo",
+        },
       },
       seed: [{
         type: "session/title",

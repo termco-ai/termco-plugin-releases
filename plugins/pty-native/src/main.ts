@@ -59,8 +59,11 @@ const plugin: PluginModule = {
             // A plain remote login shell remains usable when integration fails.
           }
         }
+        const sshAuth = remote?.kind === "ssh"
+          ? execution.prepare<sessions.SshProcessAuthentication>(remote, { domain: "ssh", method: "authentication", args: [] })
+          : undefined;
         return sessions.open(
-          { ...params, sshPrep },
+          { ...params, sshPrep, sshAuth },
           handlers.onData,
           handlers.onExit,
         );
@@ -76,8 +79,8 @@ const plugin: PluginModule = {
       liveSessions: sessions.liveSessions,
     };
     activeCapability = capability;
-    await context.effect(() => () => {
-      capability.closeAll();
+    await context.effect(() => async () => {
+      await sessions.closeAllAndWait();
       if (activeCapability === capability) activeCapability = null;
     });
     context.provide("terminal.pty", capability);

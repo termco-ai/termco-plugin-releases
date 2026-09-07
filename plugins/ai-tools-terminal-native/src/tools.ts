@@ -21,14 +21,14 @@ function values(input: unknown): Record<string, unknown> {
 function definition(
   description: string,
   inputSchema: Record<string, unknown>,
-  execute: (input: Record<string, unknown>) => unknown | Promise<unknown>,
+  execute: (input: Record<string, unknown>, context?: { readonly signal: AbortSignal }) => unknown | Promise<unknown>,
   needsApproval = false,
   alwaysNeedsApproval?: (input: unknown) => boolean,
 ): ApprovalSafeToolDefinition {
   return {
     description,
     inputSchema,
-    execute: (input) => execute(values(input)),
+    execute: (input, context) => execute(values(input), context),
     ...(needsApproval ? { needsApproval: true } : {}),
     ...(alwaysNeedsApproval ? { alwaysNeedsApproval } : {}),
   };
@@ -69,9 +69,25 @@ export class TerminalToolSet {
 
   contributions(): AiToolContribution[] {
     return [
-      { id: "shell", group: "terminal", order: 40, build: (runtime) => this.shellTools(runtime) },
+      {
+        id: "shell",
+        group: "terminal",
+        order: 40,
+        discovery: {
+          summary: "Run and manage private shell commands, background processes, and their logs.",
+        },
+        build: (runtime) => this.shellTools(runtime),
+      },
       { id: "terminal", group: "terminal", order: 100, build: (runtime) => this.terminalTools(runtime) },
-      { id: "view", group: "terminal", order: 120, build: (runtime) => this.viewTools(runtime) },
+      {
+        id: "view",
+        group: "terminal",
+        order: 120,
+        discovery: {
+          summary: "Inspect and focus the user's open terminals, editors, browsers, previews, and other tabs.",
+        },
+        build: (runtime) => this.viewTools(runtime),
+      },
     ];
   }
 
@@ -95,21 +111,39 @@ export class TerminalToolSet {
       bash_run: definition(
         "Run a foreground command in this chat session's persistent private shell. Its directory persists across calls. Prefer dedicated file/search tools; never invoke interactive programs. Asks for approval unless Auto run is enabled; catastrophic commands always ask.",
         { type: "object", properties: { command: { type: "string" }, timeout_secs: { type: "integer", minimum: 1, maximum: 300 } }, required: ["command"], additionalProperties: false },
-        async ({ command, timeout_secs }) => {
+        async ({ command, timeout_secs }, context) => {
+          context?.signal.throwIfAborted();
           const value = String(command ?? "");
           const safety = checkShellCommand(value);
           if (!safety.ok) return { error: safety.reason };
           const cwd = runtime.getCwd?.() ?? null;
           try {
             const id = await this.session(runtime, cwd);
-            const result = await this.shell.sessionRun(
-              id,
-              value,
-              cwd ?? undefined,
-              typeof timeout_secs === "number" ? timeout_secs : undefined,
-              environment(runtime),
-            ) as SessionRunResult;
-            if (typeof result.cwd_after === "string" && result.cwd_after !== cwd) runtime.setWorkspaceFolder?.(result.cwd_after);
+            const signal = context?.signal;
+            let closing: Promise<void> | undefined;
+            const closeOnAbort = () => {
+              this.#sessions.delete(`${runtime.getSessionId?.()}:${scopeKey(runtime)}`);
+              closing = this.shell.sessionClose(id);
+              void closing.catch(() => {});
+            };
+            signal?.addEventListener("abort", closeOnAbort, { once: true });
+            if (signal?.aborted) closeOnAbort();
+            let result: SessionRunResult;
+            try {
+              signal?.throwIfAborted();
+              result = await this.shell.sessionRun(
+                id,
+                value,
+                cwd ?? undefined,
+                typeof timeout_secs === "number" ? timeout_secs : undefined,
+                environment(runtime),
+              ) as SessionRunResult;
+              signal?.throwIfAborted();
+            } finally {
+              signal?.removeEventListener("abort", closeOnAbort);
+              await closing;
+            }
+            if (typeof result.cwd_after === "string" && result.cwd_after !== cwd) await runtime.setWorkspaceFolder?.(result.cwd_after);
             return {
               command: value,
               stdout: result.stdout,

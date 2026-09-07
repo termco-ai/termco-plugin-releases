@@ -9,10 +9,10 @@
  * remote re-parse it (`sh -c mkdir …` → "mkdir: missing operand"). One element =
  * the remote shell runs it verbatim.
  *
- * Auth is delegated to system ssh + `~/.ssh/config` + agent/keys; we force
- * `BatchMode=yes` so a missing key fails fast, and never touch
- * `StrictHostKeyChecking` (host-key verification follows the user's known_hosts).
+ * Auth uses system OpenSSH and Termco askpass. Host-key verification follows
+ * the user's OpenSSH configuration.
  */
+import { openSshAuthentication } from "./authentication";
 import { type CliOutput, ok, runCli } from "./cliRunner";
 import type { SshTarget } from "./types";
 
@@ -35,7 +35,7 @@ export function assertSafeTarget(target: SshTarget): void {
   }
 }
 
-const CONNECT_OPTS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15"];
+const CONNECT_OPTS = ["-o", "BatchMode=no", "-o", "ConnectTimeout=15"];
 
 /** `user@host` (config aliases resolve their own user). */
 export function destination(target: SshTarget): string {
@@ -52,12 +52,15 @@ export function sshArgs(target: SshTarget, remote: string[], extraOpts: string[]
 }
 
 /** Run a remote command. Pass the whole command as ONE string (see file header). */
-export function runSsh(target: SshTarget, remoteCommand: string, timeoutSecs?: number): Promise<CliOutput> {
-  return runCli("ssh", sshArgs(target, [remoteCommand]), timeoutSecs);
+export async function runSsh(target: SshTarget, remoteCommand: string, timeoutSecs?: number): Promise<CliOutput> {
+  const args = sshArgs(target, [remoteCommand]);
+  const auth = openSshAuthentication(target);
+  try { return await runCli("ssh", args, timeoutSecs, { env: auth.env, waiting: auth.waiting }); }
+  finally { auth.close(); }
 }
 
 /** Copy a local file to `dest:remotePath` (remote path relative to $HOME). */
-export function runScp(
+export async function runScp(
   target: SshTarget,
   localPath: string,
   remotePath: string,
@@ -67,5 +70,7 @@ export function runScp(
   const args = [...CONNECT_OPTS];
   if (target.port) args.push("-P", String(target.port)); // scp uses -P
   args.push(localPath, `${destination(target)}:${remotePath}`);
-  return runCli("scp", args, timeoutSecs);
+  const auth = openSshAuthentication(target);
+  try { return await runCli("scp", args, timeoutSecs, { env: auth.env, waiting: auth.waiting }); }
+  finally { auth.close(); }
 }

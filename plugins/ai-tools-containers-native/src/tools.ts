@@ -172,9 +172,25 @@ export function createContainerToolContributions(
   ssh?: SshClientCapability,
 ): AiToolContribution[] {
   return [
-    { id: "containers", group: "containers", order: 60, build: (context) => buildContainerTools(containers, context as ContainerToolContext) },
+    {
+      id: "containers",
+      group: "containers",
+      order: 60,
+      discovery: {
+        summary: "Inspect container state, logs, configuration, and resource usage; start, stop, or restart containers with approval.",
+      },
+      build: (context) => buildContainerTools(containers, context as ContainerToolContext),
+    },
     ...(ssh
-      ? [{ id: "ports", group: "containers", order: 70, build: (context: unknown) => buildPortTools(ssh, context as ContainerToolContext) }]
+      ? [{
+          id: "ports",
+          group: "containers",
+          order: 70,
+          discovery: {
+            summary: "Inspect remote ports and manage SSH port forwards.",
+          },
+          build: (context: unknown) => buildPortTools(ssh, context as ContainerToolContext),
+        }]
       : []),
   ];
 }

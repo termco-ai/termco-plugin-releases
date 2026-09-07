@@ -619,9 +619,10 @@ describe("current AI tool executor", () => {
     });
     const controller = new AbortController();
     let firstStarted = false;
+    let finishBody!: () => void;
     const firstBody = vi.fn(() => {
       firstStarted = true;
-      return new Promise(() => undefined);
+      return new Promise<void>((resolve) => { finishBody = resolve; });
     });
     const secondBody = vi.fn(async () => "must not run");
     const firstDefinition = definition(firstBody);
@@ -649,6 +650,7 @@ describe("current AI tool executor", () => {
       ok: false,
       error: { code: "CANCELLED" },
     });
+    finishBody();
     await expect(second).resolves.toMatchObject({
       ok: false,
       error: { code: "TOOL_NOT_STARTED" },
@@ -880,4 +882,49 @@ describe("current AI tool executor", () => {
       error: { code: "TOOL_DENIED", message: "User declined tool execution" },
     });
   });
+});
+
+it.each(["timeout", "cancel"])("keeps the exclusive barrier until the %s tool body actually finishes", async (reason) => {
+  vi.useFakeTimers();
+  let release!: () => void;
+  try {
+    const executor = createAiToolExecutor({ history: history([]).capability, toolTimeoutMs: 25 });
+    const effects: string[] = [];
+    const controller = new AbortController();
+    const first = executor.execute({ ...call(), signal: controller.signal, definition: {
+      ...definition(async () => { effects.push("first-start"); await new Promise<void>((resolve) => { release = resolve; }); effects.push("first-mutation"); return {}; }), concurrency: "exclusive",
+    } });
+    await vi.advanceTimersByTimeAsync(0);
+    if (reason === "cancel") controller.abort("cancelled");
+    await vi.advanceTimersByTimeAsync(25);
+    expect(await first).toMatchObject({ ok: false, error: { code: reason === "timeout" ? "TIMEOUT" : "CANCELLED" } });
+    const second = executor.execute({ ...call(), callId: ToolCallId("call-b"), definition: {
+      ...definition(() => { effects.push("second-mutation"); return {}; }), concurrency: "exclusive",
+    } });
+    await vi.advanceTimersByTimeAsync(0);
+    expect(effects).toEqual(["first-start"]);
+    release();
+    await second;
+    expect(effects).toEqual(["first-start", "first-mutation", "second-mutation"]);
+  } finally { release?.(); vi.useRealTimers(); }
+});
+
+it("passes deadline cancellation into cooperative tool implementations", async () => {
+  vi.useFakeTimers();
+  try {
+    let signal: AbortSignal | undefined;
+    const executor = createAiToolExecutor({ history: history([]).capability, toolTimeoutMs: 25 });
+    const pending = executor.execute({ ...call(), definition: {
+      ...definition(() => ({})),
+      execute: async (_input, context) => {
+        signal = context?.signal;
+        await new Promise<void>((resolve) => signal?.addEventListener("abort", () => resolve(), { once: true }));
+        signal?.throwIfAborted();
+        throw new Error("should never reach a mutation");
+      },
+    } });
+    await vi.advanceTimersByTimeAsync(25);
+    expect(signal?.aborted).toBe(true);
+    expect(await pending).toMatchObject({ ok: false, error: { code: "TIMEOUT" } });
+  } finally { vi.useRealTimers(); }
 });

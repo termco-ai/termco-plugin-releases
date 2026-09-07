@@ -104,6 +104,9 @@ export function createSessionQueryContribution(
     id: "session-query",
     group: "session-query",
     order: 160,
+    discovery: {
+      summary: "Search and inspect authorized, redacted records from prior AI sessions in this workspace.",
+    },
     build(runtime) {
       const sessionSearch: AiToolDefinition = {
         description: "Search redacted prior session records in this session's authorized workspace.",

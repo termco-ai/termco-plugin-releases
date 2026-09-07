@@ -1,15 +1,7 @@
-import { Button, IS_MAC, TooltipProvider } from "@termco/ui";
+import { Button, IS_MAC, TooltipProvider, cn } from "@termco/ui";
 import { ArrowRight01Icon, GitBranchIcon } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
-import {
-  type KeyboardEvent,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from "react";
+import { type KeyboardEvent, memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { ChangedFileList } from "./components/ChangedFileList";
 import { CleanTreeHint } from "./components/CleanTreeHint";
 import { CommitComposer } from "./components/CommitComposer";
@@ -20,6 +12,7 @@ import { usePanelRows } from "./hooks/usePanelRows";
 import { upstreamBadgeLabel } from "./lib/rowHelpers";
 import type { SourceControlSummary } from "./useSourceControl";
 import { useSourceControlPanel } from "./useSourceControlPanel";
+import type { SourceControlSectionContribution, SourceControlSectionProps } from "@termco/git-base";
 
 type Props = {
   open: boolean;
@@ -34,6 +27,8 @@ type Props = {
   }) => void;
   onOpenFile?: (absolutePath: string) => void;
   onNavigateToPath?: (path: string) => void;
+  sections?: readonly SourceControlSectionContribution[];
+  sectionProps?: SourceControlSectionProps;
 };
 
 export const SourceControlPanel = memo(function SourceControlPanel({
@@ -43,6 +38,8 @@ export const SourceControlPanel = memo(function SourceControlPanel({
   onOpenDiff,
   onOpenFile,
   onNavigateToPath,
+  sections = [],
+  sectionProps,
 }: Props) {
   // usePanelRows' virtualizer rerenders this component after measuring; a
   // compiler-cached ChangedFileList element would swallow that rerender and
@@ -54,6 +51,24 @@ export const SourceControlPanel = memo(function SourceControlPanel({
   const scrollRef = useRef<HTMLDivElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [focusedRowKey, setFocusedRowKey] = useState<string | null>(null);
+  const viewSections = useMemo(
+    () => sections.filter((section) => section.placement === "view"),
+    [sections],
+  );
+  const inlineSections = useMemo(
+    () => sections.filter((section) => section.placement !== "view"),
+    [sections],
+  );
+  const [selectedView, setSelectedView] = useState("changes");
+
+  useEffect(() => {
+    if (
+      selectedView !== "changes" &&
+      !viewSections.some((section) => section.id === selectedView)
+    ) {
+      setSelectedView("changes");
+    }
+  }, [selectedView, viewSections]);
 
   useEffect(() => {
     return () => {
@@ -72,9 +87,7 @@ export const SourceControlPanel = memo(function SourceControlPanel({
   const commitShortcut = IS_MAC ? "⌘↩" : "Ctrl+Enter";
   const generateShortcut = IS_MAC ? "⌘G" : "Ctrl+G";
   const canCommit =
-    scm.stagedEntries.length > 0 &&
-    scm.commitMessage.trim().length > 0 &&
-    !scm.actionBusy;
+    scm.stagedEntries.length > 0 && scm.commitMessage.trim().length > 0 && !scm.actionBusy;
   const commitDisabledReason = scm.actionBusy
     ? "Wait for the current Git action to finish."
     : scm.stagedEntries.length === 0
@@ -93,8 +106,7 @@ export const SourceControlPanel = memo(function SourceControlPanel({
   const changedCount = scm.fileEntries.length;
   const pushStatusLabel = upstreamBadgeLabel(scm.status?.upstream);
   const hasUpstream = !!scm.status?.upstream;
-  const isDiverged =
-    !!scm.status && scm.status.ahead > 0 && scm.status.behind > 0;
+  const isDiverged = !!scm.status && scm.status.ahead > 0 && scm.status.behind > 0;
 
   const canPull =
     hasUpstream &&
@@ -106,21 +118,14 @@ export const SourceControlPanel = memo(function SourceControlPanel({
   const canFetch = hasUpstream && !scm.actionBusy && !sourceControl.busyAction;
 
   const footerFeedback = useMemo(() => {
-    if (scm.actionError)
-      return { tone: "error", message: scm.actionError } as const;
-    if (scm.remoteError)
-      return { tone: "error", message: scm.remoteError } as const;
-    if (scm.actionMessage)
-      return { tone: "success", message: scm.actionMessage } as const;
+    if (scm.actionError) return { tone: "error", message: scm.actionError } as const;
+    if (scm.remoteError) return { tone: "error", message: scm.remoteError } as const;
+    if (scm.actionMessage) return { tone: "success", message: scm.actionMessage } as const;
     return null;
   }, [scm.actionError, scm.actionMessage, scm.remoteError]);
 
   const handleCommitShortcut = (event: KeyboardEvent<HTMLTextAreaElement>) => {
-    if (
-      event.key === "Enter" &&
-      (event.metaKey || event.ctrlKey) &&
-      canCommit
-    ) {
+    if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && canCommit) {
       event.preventDefault();
       void scm.commit();
       return;
@@ -192,18 +197,64 @@ export const SourceControlPanel = memo(function SourceControlPanel({
           onPull={handlePull}
         />
 
-        {onOpenGitGraph ? (
+        {scm.panelState === "ready" && viewSections.length > 0 ? (
+          <div
+            role="tablist"
+            aria-label="Source control view"
+            className="termco-toolbar grid shrink-0 border-b border-border/60 p-1"
+            style={{ gridTemplateColumns: `repeat(${viewSections.length + 1}, minmax(0, 1fr))` }}
+          >
+            <button
+              type="button"
+              role="tab"
+              aria-selected={selectedView === "changes"}
+              onClick={() => setSelectedView("changes")}
+              className={cn(
+                "h-7 rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                selectedView === "changes"
+                  ? "bg-background text-foreground shadow-sm"
+                  : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+              )}
+            >
+              Changes <span className="ml-1 tabular-nums opacity-65">{changedCount}</span>
+            </button>
+            {viewSections.map((section) => (
+              <button
+                key={section.id}
+                type="button"
+                role="tab"
+                aria-selected={selectedView === section.id}
+                onClick={() => setSelectedView(section.id)}
+                className={cn(
+                  "h-7 truncate rounded-md px-2 text-xs font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring",
+                  selectedView === section.id
+                    ? "bg-background text-foreground shadow-sm"
+                    : "text-muted-foreground hover:bg-accent/60 hover:text-foreground",
+                )}
+              >
+                {section.label}
+              </button>
+            ))}
+          </div>
+        ) : null}
+
+        {scm.panelState === "ready" && selectedView !== "changes" && sectionProps ? (
+          <div className="min-h-0 flex-1 overflow-hidden">
+            {viewSections
+              .filter((section) => section.id === selectedView)
+              .map((section) => (
+                <section.Component key={section.id} {...sectionProps} />
+              ))}
+          </div>
+        ) : null}
+
+        {selectedView === "changes" && onOpenGitGraph ? (
           <button
             type="button"
             onClick={() => onOpenGitGraph()}
             className="termco-toolbar group flex shrink-0 cursor-pointer items-center gap-2 border-b border-border/60 px-3 py-2 text-left text-muted-foreground transition-colors hover:bg-accent hover:text-foreground"
           >
-            <HugeiconsIcon
-              icon={GitBranchIcon}
-              size={13}
-              strokeWidth={1.85}
-              className="shrink-0"
-            />
+            <HugeiconsIcon icon={GitBranchIcon} size={13} strokeWidth={1.85} className="shrink-0" />
             <span className="flex-1 text-xs font-medium">Commit Graph</span>
             <HugeiconsIcon
               icon={ArrowRight01Icon}
@@ -214,18 +265,18 @@ export const SourceControlPanel = memo(function SourceControlPanel({
           </button>
         ) : null}
 
-        {scm.panelState === "loading" ? (
+        {selectedView === "changes" && scm.panelState === "loading" ? (
           <PanelCenter title="Loading repository" />
         ) : null}
 
-        {scm.panelState === "no-repo" ? (
+        {selectedView === "changes" && scm.panelState === "no-repo" ? (
           <PanelCenter
             title="No repository"
             body="The active workspace is not inside a Git repository."
           />
         ) : null}
 
-        {scm.panelState === "error" ? (
+        {selectedView === "changes" && scm.panelState === "error" ? (
           <PanelCenter
             title="Source control error"
             body={scm.statusError ?? "Unknown source control error"}
@@ -237,8 +288,13 @@ export const SourceControlPanel = memo(function SourceControlPanel({
           />
         ) : null}
 
-        {scm.panelState === "ready" && scm.status ? (
+        {selectedView === "changes" && scm.panelState === "ready" && scm.status ? (
           <>
+            {sectionProps
+              ? inlineSections.map((section) => (
+                  <section.Component key={section.id} {...sectionProps} />
+                ))
+              : null}
             <CommitComposer
               commitMessage={scm.commitMessage}
               setCommitMessage={scm.setCommitMessage}

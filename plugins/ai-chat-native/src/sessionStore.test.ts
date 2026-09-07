@@ -13,6 +13,7 @@ import {
 import { configureSessionRuntime } from "./runtime";
 import { aiSessionsCapability, useChatStore } from "./store/store";
 import { chats, seedMessages, toolContexts } from "./store/registry";
+import { useAgentsStore } from "./baseline/store/agentsStore";
 
 const preferences = {
   get: vi.fn(async () => undefined),
@@ -106,6 +107,32 @@ afterEach(() => {
 });
 
 describe("AI session provider", () => {
+  it("starts a fresh conversation with the requested agent and prefill", () => {
+    const focusInput = vi.fn();
+    useChatStore.setState({
+      newSession: vi.fn(() => "fresh-review"),
+      focusInput,
+    });
+    useAgentsStore.setState({
+      activeId: "builtin:coder",
+      setActiveId: (id) => useAgentsStore.setState({ activeId: id }),
+    });
+
+    expect(
+      aiSessionsCapability.startConversation({
+        agentId: "builtin:reviewer",
+        prefill: "Review GitLab group/app#42.",
+        workspace: { rigId: "rig-review", root: "/repo" },
+      }),
+    ).toBe(SessionId("fresh-review"));
+    expect(useChatStore.getState().newSession).toHaveBeenCalledWith({
+      rigId: "rig-review",
+      workspaceRoot: "/repo",
+    });
+    expect(useAgentsStore.getState().activeId).toBe("builtin:reviewer");
+    expect(focusInput).toHaveBeenCalledWith("Review GitLab group/app#42.");
+  });
+
   it("keeps dock and mini-window navigation mutually exclusive", () => {
     useChatStore.setState({ panelOpen: false, mini: { open: false } });
     aiSessionsCapability.openPanel();
@@ -121,7 +148,14 @@ describe("AI session provider", () => {
   });
 
   it("discovers and restores a durable canonical session before opening it", async () => {
-    const window = canonicalWindow();
+    const original = canonicalWindow();
+    const window = {
+      ...original,
+      header: {
+        ...original.header,
+        workspace: { rootHash: "review-root", rootPath: "/repo" },
+      },
+    };
     const history = historyWith(window);
     disposeRuntime = configureSessionRuntime({ preferences, history, models: [] });
 
@@ -140,6 +174,7 @@ describe("AI session provider", () => {
           id: "durable-session",
           title: "Durable prompt",
           rigId: "rig-durable",
+          workspaceRoot: "/repo",
           createdAt: 100,
           updatedAt: 120,
         },
@@ -165,20 +200,22 @@ describe("AI session provider", () => {
     useChatStore.setState({
       activeSessionId: "current-session",
       currentRigId: "current-rig",
-      sessions: [{
-        id: "current-session",
-        title: "Current",
-        rigId: "current-rig",
-        createdAt: 1,
-        updatedAt: 2,
-      }],
+      sessions: [
+        {
+          id: "current-session",
+          title: "Current",
+          rigId: "current-rig",
+          createdAt: 1,
+          updatedAt: 2,
+        },
+      ],
       panelOpen: false,
       mini: { open: true },
     });
 
-    await expect(
-      aiSessionsCapability.openSession(SessionId("missing-session")),
-    ).rejects.toThrow("session missing");
+    await expect(aiSessionsCapability.openSession(SessionId("missing-session"))).rejects.toThrow(
+      "session missing",
+    );
 
     expect(useChatStore.getState()).toMatchObject({
       activeSessionId: "current-session",
@@ -207,7 +244,7 @@ describe("AI session provider", () => {
     };
     const history = historyWith(parent);
     history.readWindow = vi.fn(async (sessionId) =>
-      sessionId === child.header.id ? child : parent
+      sessionId === child.header.id ? child : parent,
     );
     history.fork = vi.fn(async () => ({
       childSessionId: child.header.id,
@@ -256,7 +293,7 @@ describe("AI session provider", () => {
     const child = canonicalWindow("child-session");
     const history = historyWith(parent);
     history.readWindow = vi.fn(async (sessionId) =>
-      sessionId === child.header.id ? child : parent
+      sessionId === child.header.id ? child : parent,
     );
     history.fork = vi.fn(async () => ({
       childSessionId: child.header.id,
@@ -272,13 +309,15 @@ describe("AI session provider", () => {
     disposeRuntime = configureSessionRuntime({ preferences, history, models: [] });
     useChatStore.setState({
       currentRigId: "rig-durable",
-      sessions: [{
-        id: "parent-session",
-        title: "Parent",
-        rigId: "rig-durable",
-        createdAt: 100,
-        updatedAt: 120,
-      }],
+      sessions: [
+        {
+          id: "parent-session",
+          title: "Parent",
+          rigId: "rig-durable",
+          createdAt: 100,
+          updatedAt: 120,
+        },
+      ],
       activeSessionId: "parent-session",
     });
 

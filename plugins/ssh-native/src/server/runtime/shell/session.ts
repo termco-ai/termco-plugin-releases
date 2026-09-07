@@ -10,6 +10,7 @@ interface Session {
   id: number;
   cwd: string | undefined;
   workspace: WorkspaceEnv;
+  running: Set<AbortController>;
 }
 
 const sessions = new Map<number, Session>();
@@ -19,7 +20,7 @@ const CWD_MARK = "__TERMCO_CWD__";
 
 export function sessionOpen(cwd: string | undefined, workspace: WorkspaceEnv): number {
   const id = nextId++;
-  sessions.set(id, { id, cwd: cwd?.trim() || undefined, workspace });
+  sessions.set(id, { id, cwd: cwd?.trim() || undefined, workspace, running: new Set() });
   return id;
 }
 
@@ -31,12 +32,16 @@ export async function sessionRun(
   workspace: WorkspaceEnv,
 ): Promise<CommandOutput> {
   const session = sessions.get(id);
+  if (!session) throw new Error("shell session is closed");
   const effectiveCwd = cwd?.trim() || session?.cwd;
   // Append a pwd marker so a `cd` inside the command persists to the next run.
   // `$?` is preserved so the reported exit code is the user command's, not pwd's.
   const wrapped =
     `${command}\n__termco_ec=$?\nprintf '%s%s%s' "${CWD_MARK}" "$(pwd 2>/dev/null)" "${CWD_MARK}"\nexit $__termco_ec`;
-  const out = await runCommand(wrapped, effectiveCwd, timeoutSecs, workspace ?? session?.workspace);
+  const controller = new AbortController();
+  session.running.add(controller);
+  const out = await runCommand(wrapped, effectiveCwd, timeoutSecs, workspace ?? session.workspace, controller.signal)
+    .finally(() => session.running.delete(controller));
 
   const start = out.stdout.lastIndexOf(CWD_MARK);
   if (start >= 0) {
@@ -51,11 +56,12 @@ export async function sessionRun(
 }
 
 export function sessionClose(id: number): void {
+  for (const controller of sessions.get(id)?.running ?? []) controller.abort(new Error("shell session closed"));
   sessions.delete(id);
 }
 
 export function sessionCloseAll(): void {
-  sessions.clear();
+  for (const id of sessions.keys()) sessionClose(id);
 }
 
 export function liveSessions(): Array<{ id: string; label: string }> {

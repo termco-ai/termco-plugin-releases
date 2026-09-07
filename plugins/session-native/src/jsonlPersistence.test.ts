@@ -586,3 +586,17 @@ describe("current-format JSONL session persistence", () => {
     });
   });
 });
+
+it("retains workspace transitions across disk reopen and canonical forks", async () => {
+  const path = await root();
+  const history = createSessionHistory(new JsonlSessionPersistence(path));
+  const id = SessionId("workspace-transition");
+  await history.create({ header: { ...sessionHeader(id), workspace: { rootHash: "original", rootPath: "/repo" } } });
+  await history.append(id, [{ type: "session/workspace", time: 200, data: { rootPath: "/repo/.git/review", source: "tool" } }], { durability: "written" });
+  const reopened = createSessionHistory(new JsonlSessionPersistence(path));
+  const window = await reopened.readWindow(id, { kind: "head", limit: 20 });
+  expect(window.events[0]).toMatchObject({ type: "session/workspace", data: { rootPath: "/repo/.git/review" } });
+  const fork = await reopened.fork({ sessionId: id, boundary: { kind: "event", seq: window.events[0].seq }, origin: "fork" });
+  const child = await reopened.readWindow(fork.childSessionId, { kind: "head", limit: 20 });
+  expect(child.events[0]).toEqual(window.events[0]);
+});

@@ -4,8 +4,10 @@
   "name": "AI Tools: Files",
   "description": "Lets AI safely read, search, create, edit, move, copy, and delete files through the selected application-wide workspace provider.",
   "category": "AI tools",
-  "version": "1.0.0",
-  "entrypoints": { "renderer": "src/index.ts" },
+  "version": "1.0.1",
+  "entrypoints": {
+    "renderer": "src/index.ts"
+  },
   "dependencies": {
     "@termco/ai-tools-base": "1.0.0",
     "@termco/files-base": "1.0.0",

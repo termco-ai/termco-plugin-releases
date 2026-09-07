@@ -8,6 +8,10 @@ const DEFAULT_EAGER_TOOL_NAMES = new Set([
   "bash_run",
 ]);
 
+const MAX_CAPABILITY_INDEX_CHARS = 2_400;
+const MAX_CAPABILITY_SUMMARY_CHARS = 180;
+const MAX_PRIMED_TOOLS = 3;
+
 export const TOOL_SEARCH_NAME = "tool_search";
 
 export type ToolSearchMatch = {
@@ -22,16 +26,26 @@ export type ToolSearchResult = {
   loaded: string[];
 };
 
+export type ToolDiscoveryCapability = {
+  id: string;
+  group: string;
+  toolNames: readonly string[];
+  summary?: string;
+  activationPhrases?: Readonly<Record<string, readonly string[]>>;
+};
+
 export interface ToolDisclosure {
   readonly catalogSize: number;
   readonly toolSearchDefinition: AiToolEntry;
   activeToolNames(additionalPreferredGroups?: readonly string[]): string[];
+  prime(request: string): string[];
   search(query: string, limit?: number): ToolSearchResult;
   telemetry(): {
     catalogSize: number;
     eagerCount: number;
     deferredCount: number;
     loadedCount: number;
+    primedCount: number;
     searches: number;
     zeroMatchSearches: number;
   };
@@ -42,6 +56,7 @@ type Input = {
   groups: ReadonlyMap<string, string>;
   preferredGroups?: readonly string[];
   hiddenGroups?: readonly string[];
+  capabilities?: readonly ToolDiscoveryCapability[];
 };
 
 type CatalogEntry = ToolSearchMatch & {
@@ -56,6 +71,19 @@ function words(value: string): string[] {
     .toLocaleLowerCase()
     .split(/[^a-z0-9]+/u)
     .filter(Boolean);
+}
+
+function compactText(value: string, limit: number): string {
+  const compact = value.replace(/\s+/gu, " ").trim();
+  return compact.length <= limit ? compact : `${compact.slice(0, limit - 1)}…`;
+}
+
+function containsPhrase(requestWords: readonly string[], phrase: string): boolean {
+  const phraseWords = words(phrase);
+  if (phraseWords.length === 0 || phraseWords.length > requestWords.length) return false;
+  return requestWords.some((_, start) =>
+    phraseWords.every((word, offset) => requestWords[start + offset] === word)
+  );
 }
 
 function schemaSearchText(value: unknown, depth = 0): string[] {
@@ -106,8 +134,22 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
   const preferredGroups = new Set(input.preferredGroups ?? []);
   const hiddenGroups = new Set(input.hiddenGroups ?? []);
   const loaded = new Set<string>();
+  const primed = new Set<string>();
   let searches = 0;
   let zeroMatchSearches = 0;
+  const allowedCapabilities = (input.capabilities ?? []).flatMap((capability) => {
+    if (hiddenGroups.has(capability.group)) return [];
+    const toolNames = capability.toolNames.filter((name) => input.definitions[name]);
+    return toolNames.length > 0 ? [{ ...capability, toolNames }] : [];
+  });
+  const discoveryTextByTool = new Map<string, string[]>();
+  for (const capability of allowedCapabilities) {
+    const summary = capability.summary?.trim();
+    for (const name of capability.toolNames) {
+      const phrases = capability.activationPhrases?.[name] ?? [];
+      discoveryTextByTool.set(name, [summary ?? "", ...phrases]);
+    }
+  }
   const catalog = Object.entries(input.definitions)
     .filter((entry): entry is [string, AiToolEntry] => Boolean(entry[1]))
     .flatMap(([name, definition]): CatalogEntry[] => {
@@ -118,6 +160,7 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
         name,
         group,
         description,
+        ...(discoveryTextByTool.get(name) ?? []),
         ...schemaSearchText(definition.inputSchema),
       ].join(" ");
       const tokens = words(searchText);
@@ -145,6 +188,59 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
     ? 1
     : catalog.reduce((total, entry) => total + entry.tokens.length, 0) /
       catalog.length;
+
+  const initiallyActive = (entry: CatalogEntry) =>
+    entry.group === "core" ||
+    DEFAULT_EAGER_TOOL_NAMES.has(entry.name) ||
+    preferredGroups.has(entry.group);
+  const catalogByName = new Map(catalog.map((entry) => [entry.name, entry]));
+  const deferredToolNamesByGroup = new Map<string, string[]>();
+  for (const entry of catalog) {
+    if (initiallyActive(entry)) continue;
+    const names = deferredToolNamesByGroup.get(entry.group) ?? [];
+    names.push(entry.name);
+    deferredToolNamesByGroup.set(entry.group, names);
+  }
+
+  const groups = new Map<string, { summaries: string[]; toolNames: string[] }>();
+  for (const capability of allowedCapabilities) {
+    const deferredNames = capability.toolNames.filter((name) => {
+      const entry = catalogByName.get(name);
+      return entry && !initiallyActive(entry);
+    });
+    if (deferredNames.length === 0) continue;
+    const current = groups.get(capability.group) ?? { summaries: [], toolNames: [] };
+    if (capability.summary?.trim()) current.summaries.push(capability.summary);
+    current.toolNames.push(...deferredNames);
+    groups.set(capability.group, current);
+  }
+  for (const [group, toolNames] of deferredToolNamesByGroup) {
+    if (groups.has(group)) continue;
+    groups.set(group, { summaries: [], toolNames });
+  }
+  const capabilityLines = [...groups.entries()].map(([group, details]) => {
+    const uniqueSummaries = [...new Set(details.summaries.map((summary) =>
+      compactText(summary, MAX_CAPABILITY_SUMMARY_CHARS)
+    ))];
+    const fallback = [...new Set(details.toolNames)].slice(0, 4).join(", ");
+    return `- ${group}: ${uniqueSummaries.join(" ") || fallback}`;
+  });
+  const overflowLine = "- More authorized capabilities are searchable by desired outcome.";
+  let capabilityIndex = "";
+  let truncatedCapabilities = false;
+  for (const [index, line] of capabilityLines.entries()) {
+    const candidate = capabilityIndex ? `${capabilityIndex}\n${line}` : line;
+    const needsOverflowLine = index < capabilityLines.length - 1;
+    const reservedLength = needsOverflowLine ? overflowLine.length + 1 : 0;
+    if (candidate.length + reservedLength > MAX_CAPABILITY_INDEX_CHARS) {
+      truncatedCapabilities = true;
+      break;
+    }
+    capabilityIndex = candidate;
+  }
+  if (capabilityIndex && truncatedCapabilities) {
+    capabilityIndex += `\n${overflowLine}`;
+  }
 
   const search = (rawQuery: string, rawLimit = 5): ToolSearchResult => {
     const query = rawQuery.trim();
@@ -179,9 +275,34 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
     return { query, matches, loaded: matches.map((match) => match.name) };
   };
 
+  const prime = (request: string): string[] => {
+    const requestWords = words(request);
+    if (requestWords.length === 0) return [];
+    const matched: string[] = [];
+    for (const capability of allowedCapabilities) {
+      for (const [name, phrases] of Object.entries(
+        capability.activationPhrases ?? {},
+      )) {
+        if (
+          matched.length >= MAX_PRIMED_TOOLS ||
+          primed.has(name) ||
+          !availableNames.has(name) ||
+          !capability.toolNames.includes(name) ||
+          !phrases.some((phrase) => containsPhrase(requestWords, phrase))
+        ) continue;
+        loaded.add(name);
+        primed.add(name);
+        matched.push(name);
+      }
+    }
+    return matched;
+  };
+
   const toolSearchDefinition: AiToolEntry = {
-    description:
-      "Search the complete authorized tool catalog and load the most relevant exact tool schemas for the next step. Use this whenever the directly visible tools do not cover the task. Discovery never executes a tool and never requires approval.",
+    description: [
+      "Search the complete authorized tool catalog and load the most relevant exact schemas for the next step. The list below is a compact capability index, not the complete schemas. Search before claiming a capability is unavailable, improvising with shell commands, or falling back to Markdown when a native presentation fits. Discovery never executes a tool and never requires approval.",
+      capabilityIndex ? `Currently deferred capability families:\n${capabilityIndex}` : "All authorized capability families are already visible.",
+    ].join("\n\n"),
     inputSchema: {
       type: "object",
       properties: {
@@ -231,6 +352,7 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
         .concat(TOOL_SEARCH_NAME)
         .filter((name) => name === TOOL_SEARCH_NAME || availableNames.has(name));
     },
+    prime,
     search,
     telemetry() {
       const eagerCount = catalog.filter((entry) =>
@@ -243,6 +365,7 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
         eagerCount,
         deferredCount: Math.max(0, catalog.length - eagerCount + 1),
         loadedCount: loaded.size,
+        primedCount: primed.size,
         searches,
         zeroMatchSearches,
       };

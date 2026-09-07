@@ -14,7 +14,18 @@ const table = {
 
 describe("AI Tools: Rich UI", () => {
   it("publishes one independently replaceable UI tool group", () => {
-    expect(createUiToolContribution()).toMatchObject({ id: "ui", group: "ui", order: 170 });
+    expect(createUiToolContribution()).toMatchObject({
+      id: "ui",
+      group: "ui",
+      order: 170,
+      discovery: {
+        summary: expect.stringContaining("Prefer show_ui over Markdown"),
+        activationPhrases: {
+          show_ui: expect.arrayContaining(["table", "chart", "diff view"]),
+          ask_ui: expect.arrayContaining(["interactive choice"]),
+        },
+      },
+    });
     expect(Object.keys(createUiTools()).sort()).toEqual(["ask_ui", "show_ui"]);
   });
 

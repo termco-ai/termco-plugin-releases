@@ -4,7 +4,7 @@
   "name": "Native PTY Sessions",
   "description": "Owns the one application-wide native PTY process pool, shell integration, output filtering, and terminal-agent detection.",
   "category": "Terminal providers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": {
     "main": "src/main.ts",
     "renderer": "src/renderer.ts"

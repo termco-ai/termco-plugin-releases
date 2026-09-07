@@ -1,3 +1,17 @@
+export interface SshAuthPrompt {
+  id: string;
+  connectionId: string;
+  message: string;
+  kind: "password" | "confirmation" | "response";
+  retry: boolean;
+  error?: string;
+}
+
+export interface SshAuthResponse {
+  value: string;
+  save: boolean;
+}
+
 export interface SshTarget {
   connectionId: string;
   host: string;
@@ -119,6 +133,8 @@ type RemoteMethod = (...args: never[]) => unknown;
  * connection pool and RPC channels instead of spawning their own servers.
  */
 export interface SshClientCapability {
+  authPrompts(): Promise<SshAuthPrompt[]>;
+  authRespond(id: string, response: SshAuthResponse | null): Promise<void>;
   resolveTarget(payload: Record<string, unknown>): SshTarget;
   listHosts(): SshHost[];
   resolveHome(target: SshTarget): Promise<string>;

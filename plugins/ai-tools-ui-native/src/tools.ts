@@ -58,6 +58,32 @@ export function createUiToolContribution(): AiToolContribution {
     id: "ui",
     group: "ui",
     order: 170,
+    discovery: {
+      summary:
+        "Native tables, diffs, charts, findings, trees, metrics, cards, and interactive choices. Prefer show_ui over Markdown when data shape matters; use ask_ui when the next step needs a user decision.",
+      activationPhrases: {
+        [SHOW_UI_TOOL_NAME]: [
+          "native ui",
+          "rich ui",
+          "rich view",
+          "table",
+          "chart",
+          "visualization",
+          "findings",
+          "metrics",
+          "tree view",
+          "diff view",
+          "side by side diff",
+        ],
+        [ASK_UI_TOOL_NAME]: [
+          "interactive choice",
+          "interactive question",
+          "choice cards",
+          "ask me with options",
+          "choose from these options",
+        ],
+      },
+    },
     presentations: {
       [SHOW_UI_TOOL_NAME]: showUiPresentation,
       [ASK_UI_TOOL_NAME]: askUiPresentation,

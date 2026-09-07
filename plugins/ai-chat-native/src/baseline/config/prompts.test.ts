@@ -48,6 +48,9 @@ describe("chat-owned system prompt", () => {
     expect(SYSTEM_PROMPT).toContain("Refused reads on sensitive files");
     expect(SYSTEM_PROMPT_LITE).toContain("You are Termco");
     expect(SYSTEM_PROMPT_LITE).toContain("<env>");
+    expect(SYSTEM_PROMPT).toContain("always-visible tool_search description");
+    expect(SYSTEM_PROMPT_LITE).toContain("always-visible tool_search description");
+    expect(SYSTEM_PROMPT).not.toContain("- Read: read_file");
   });
 
   it("uses capability metadata from a replacement models provider", () => {

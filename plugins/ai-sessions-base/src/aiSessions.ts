@@ -33,6 +33,13 @@ export interface BrowserPageElementContext {
   text?: string;
 }
 
+export interface AiConversationWorkspace {
+  /** The rig that owns the workspace environment used by this conversation. */
+  rigId: string;
+  /** The exact workspace root tools should remain bound to. */
+  root: string;
+}
+
 /** Application-wide AI session controller. Consumers can navigate or attach
  * context without importing the selected provider's renderer stores. */
 export interface AiSessionsCapability {
@@ -43,6 +50,14 @@ export interface AiSessionsCapability {
   togglePanel(): void;
   openMini(): void;
   closeMini(): void;
+  /** Start a blank conversation, optionally selecting its working persona and
+   * preloading the composer. This is one atomic navigation action for product
+   * surfaces that hand work to AI. */
+  startConversation(input?: {
+    agentId?: string;
+    prefill?: string | null;
+    workspace?: AiConversationWorkspace;
+  }): SessionId;
   focusInput(prefill?: string | null): void;
   attachSelection(text: string, source: "terminal" | "editor"): void;
   attachFile(path: string): void;

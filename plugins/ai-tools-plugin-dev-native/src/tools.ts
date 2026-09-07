@@ -1271,6 +1271,9 @@ export function createPluginDevelopmentContribution(
     id: "plugin-dev",
     group: "plugin-dev",
     order: 10,
+    discovery: {
+      summary: "Plan, scaffold, edit, verify, and reveal Termco plugins through the plugin-development workflow.",
+    },
     presentations: {
       plugin_brief: pluginBriefPresentation,
       plugin_verify: createCompletionPresentation(profile, changeReveal),

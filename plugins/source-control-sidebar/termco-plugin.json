@@ -4,7 +4,7 @@
   "name": "Source Control",
   "description": "Owns the complete Git sidebar: repository status, branches, diffs, staging, discard, commits, fetch, pull, push, and commit-graph navigation.",
   "category": "Workspace interface",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": {
     "renderer": "src/renderer.tsx"
   },

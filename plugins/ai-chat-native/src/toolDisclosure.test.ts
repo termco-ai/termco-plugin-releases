@@ -74,6 +74,92 @@ describe("tool disclosure", () => {
     expect(disclosure.activeToolNames()).toContain("git_status");
   });
 
+  it("advertises deferred capability families without exposing their schemas", () => {
+    const showUi = definition("Render structured data.");
+    showUi.inputSchema = {
+      type: "object",
+      properties: {
+        internalSchemaOnlyField: { type: "string" },
+      },
+    };
+    const disclosure = createToolDisclosure({
+      definitions: { ...definitions, show_ui: showUi },
+      groups: new Map([...groups, ["show_ui", "ui"]]),
+      capabilities: [{
+        id: "ui",
+        group: "ui",
+        toolNames: ["show_ui"],
+        summary: "Native tables, diffs, charts, and findings.",
+      }],
+    });
+
+    expect(disclosure.toolSearchDefinition.description).toContain(
+      "- ui: Native tables, diffs, charts, and findings.",
+    );
+    expect(disclosure.toolSearchDefinition.description).not.toContain(
+      "internalSchemaOnlyField",
+    );
+    expect(disclosure.activeToolNames()).not.toContain("show_ui");
+  });
+
+  it("primes only exact tools with high-confidence phrase matches", () => {
+    const disclosure = createToolDisclosure({
+      definitions: {
+        ...definitions,
+        show_ui: definition("Show a native view."),
+        ask_ui: definition("Ask with a native view."),
+      },
+      groups: new Map([
+        ...groups,
+        ["show_ui", "ui"],
+        ["ask_ui", "ui"],
+      ]),
+      capabilities: [{
+        id: "ui",
+        group: "ui",
+        toolNames: ["show_ui", "ask_ui"],
+        summary: "Native views and interactive choices.",
+        activationPhrases: {
+          show_ui: ["table", "rich view"],
+          ask_ui: ["interactive choice"],
+        },
+      }],
+    });
+
+    expect(disclosure.prime("Explain this ordinary function")).toEqual([]);
+    expect(disclosure.prime("Show the results in a table")).toEqual(["show_ui"]);
+    expect(disclosure.activeToolNames()).toContain("show_ui");
+    expect(disclosure.activeToolNames()).not.toContain("ask_ui");
+    expect(disclosure.telemetry().primedCount).toBe(1);
+  });
+
+  it("bounds the generated capability index", () => {
+    const manyDefinitions = Object.fromEntries(
+      Array.from({ length: 30 }, (_, index) => [
+        `tool_${index}`,
+        definition(`Schema description ${index}`),
+      ]),
+    );
+    const disclosure = createToolDisclosure({
+      definitions: manyDefinitions,
+      groups: new Map(Object.keys(manyDefinitions).map((name, index) => [
+        name,
+        `group-${index}`,
+      ])),
+      capabilities: Object.keys(manyDefinitions).map((name, index) => ({
+        id: `capability-${index}`,
+        group: `group-${index}`,
+        toolNames: [name],
+        summary: `Capability ${index} ${"x".repeat(180)}`,
+      })),
+    });
+
+    expect(disclosure.toolSearchDefinition.description?.length).toBeLessThan(2_900);
+    expect(disclosure.toolSearchDefinition.description).toContain(
+      "More authorized capabilities are searchable",
+    );
+  });
+
   it("keeps discovered tools for the current turn and releases them for the next", () => {
     const currentTurn = createToolDisclosure({ definitions, groups });
     currentTurn.search("browser");
@@ -126,6 +212,13 @@ describe("tool disclosure", () => {
       definitions,
       groups,
       hiddenGroups: ["browser"],
+      capabilities: [{
+        id: "browser",
+        group: "browser",
+        toolNames: ["browser_open"],
+        summary: "Navigate visible browser tabs.",
+        activationPhrases: { browser_open: ["browser tab"] },
+      }],
     });
 
     expect(disclosure.search("open web page")).toMatchObject({
@@ -133,5 +226,9 @@ describe("tool disclosure", () => {
       loaded: [],
     });
     expect(disclosure.catalogSize).toBe(7);
+    expect(disclosure.prime("Open a browser tab")).toEqual([]);
+    expect(disclosure.toolSearchDefinition.description).not.toContain(
+      "Navigate visible browser tabs",
+    );
   });
 });

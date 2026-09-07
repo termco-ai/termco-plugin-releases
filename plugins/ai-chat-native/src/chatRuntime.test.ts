@@ -11,6 +11,7 @@ import {
   activeSkillFromSteps,
   buildSessionTools,
   configureChatRuntime,
+  createProviderTransport,
   createSessionStepPersistenceGate,
   createSessionStreamRecorder,
   createSessionTurnClosureGate,
@@ -39,6 +40,8 @@ import {
 } from "@termco/session-base";
 import { configureSessionRuntime } from "./runtime";
 import { markToolPresentationMounted } from "./toolPresentation";
+import { toolContexts } from "./store/registry";
+import { useChatStore } from "./store/store";
 
 const workspaceRigs = {
   snapshot: () => ({ hydrated: true, rigs: [], activeId: null }),
@@ -77,6 +80,54 @@ function toolExecutor(): AiToolExecutionCapability {
 }
 
 describe("provider-owned chat runtime", () => {
+  it("binds every tool in a review conversation to its session workspace", () => {
+    configureChatRuntime({
+      inference: {} as AiInferenceCapability,
+      tools: [],
+      toolExecution: toolExecutor(),
+      workspaceRigs: {
+        snapshot: () => ({
+          hydrated: true,
+          activeId: "rig-review",
+          rigs: [
+            {
+              id: "rig-review",
+              name: "Review",
+              root: "/",
+              workspace: { kind: "local" },
+              createdAt: 1,
+              updatedAt: 1,
+            },
+          ],
+        }),
+      } as unknown as WorkspaceRigsCapability,
+    });
+    useChatStore.setState({
+      sessions: [
+        {
+          id: "review-session",
+          title: "Review",
+          rigId: "rig-review",
+          workspaceRoot: "/repo",
+          createdAt: 1,
+          updatedAt: 1,
+        },
+      ],
+      live: {
+        ...useChatStore.getState().live,
+        getCwd: () => "/terminal",
+        getWorkspaceRoot: () => "/",
+      },
+    });
+
+    createProviderTransport("review-session");
+    const runtime = toolContexts.get("review-session") as AiToolRuntime;
+
+    expect(runtime.getWorkspaceRoot?.()).toBe("/repo");
+    expect(runtime.getCwd?.()).toBe("/repo");
+    expect(runtime.getRigRoot?.()).toBe("/");
+  });
+
   it("does not enter an executable tool until its real transcript row committed and painted", async () => {
     const frames: FrameRequestCallback[] = [];
     const requestFrame = vi.spyOn(window, "requestAnimationFrame").mockImplementation((callback) => {

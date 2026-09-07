@@ -1,3 +1,5 @@
+import { SECRETS_APPLICATION_SERVICE, type SecretsCapability } from "@termco/storage-base";
+import { createSshAuthentication, configureAuthentication, SSH_AUTH_CHANGED } from "./authentication";
 import { app, powerMonitor } from "electron";
 import { EVENTS_APPLICATION_SERVICE, type ApplicationEventsCapability } from "@termco/events-base";
 import type { PluginModule } from "@termco/kernel";
@@ -95,12 +97,22 @@ async function scanPorts(workspace: SshWorkspace): Promise<SshPortScanResult> {
 const plugin: PluginModule = {
   inject: [
     EVENTS_APPLICATION_SERVICE,
+    SECRETS_APPLICATION_SERVICE,
     WORKSPACE_EXECUTION_BACKENDS_SERVICE,
   ],
   async activate(context) {
     await context.effect(() => {
       configureEvents(context.get<ApplicationEventsCapability>(EVENTS_APPLICATION_SERVICE));
       return () => configureEvents(null);
+    });
+
+    const authentication = await createSshAuthentication({
+      secrets: context.get<SecretsCapability>(SECRETS_APPLICATION_SERVICE),
+      changed: () => context.get<ApplicationEventsCapability>(EVENTS_APPLICATION_SERVICE).emit(SSH_AUTH_CHANGED, null),
+    });
+    await context.effect(() => {
+      configureAuthentication(authentication);
+      return () => { configureAuthentication(null); authentication.dispose(); };
     });
 
     await context.effect(() =>
@@ -125,6 +137,8 @@ const plugin: PluginModule = {
     });
 
     const capability = {
+      authPrompts: async () => authentication.prompts(),
+      authRespond: authentication.respond,
       resolveTarget,
       listHosts: listConfigHosts,
       resolveHome,
@@ -203,6 +217,7 @@ const plugin: PluginModule = {
 
     activeCapability = capability;
     await context.effect(() => async () => {
+      authentication.dispose();
       shutdownForwards();
       await disconnectAll();
       if (activeCapability === capability) activeCapability = null;

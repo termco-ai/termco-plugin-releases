@@ -1,24 +1,11 @@
 // @vitest-environment jsdom
 import "@testing-library/jest-dom/vitest";
 import type { GitStatusSnapshot } from "@termco/git-base";
-import {
-  cleanup,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from "@testing-library/react";
-import {
-  afterEach,
-  beforeAll,
-  beforeEach,
-  describe,
-  expect,
-  it,
-  vi,
-} from "vitest";
+import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
+import { afterEach, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { SourceControlPanel } from "./SourceControlPanel";
 import type { SourceControlSummary } from "./useSourceControl";
+import type { SourceControlSectionContribution } from "@termco/git-base";
 import type {
   SourceControlFileEntry,
   SourceControlPanelState,
@@ -55,8 +42,7 @@ vi.mock("@tanstack/react-virtual", () => ({
 
 const useSourceControlPanelMock = vi.fn();
 vi.mock("./useSourceControlPanel", () => ({
-  useSourceControlPanel: (...args: unknown[]) =>
-    useSourceControlPanelMock(...args),
+  useSourceControlPanel: (...args: unknown[]) => useSourceControlPanelMock(...args),
 }));
 
 beforeAll(() => {
@@ -98,9 +84,7 @@ function fileEntry(path: string): SourceControlFileEntry {
   };
 }
 
-function makeScm(
-  overrides: Partial<SourceControlPanelState> = {},
-): SourceControlPanelState {
+function makeScm(overrides: Partial<SourceControlPanelState> = {}): SourceControlPanelState {
   return {
     panelState: "ready",
     repo: {
@@ -152,9 +136,7 @@ function makeScm(
   };
 }
 
-function makeSummary(
-  overrides: Partial<SourceControlSummary> = {},
-): SourceControlSummary {
+function makeSummary(overrides: Partial<SourceControlSummary> = {}): SourceControlSummary {
   return {
     repo: null,
     status: null,
@@ -182,6 +164,7 @@ function renderPanel(options: {
   open?: boolean;
   summary?: SourceControlSummary;
   onOpenGitGraph?: () => void;
+  sections?: readonly SourceControlSectionContribution[];
 }) {
   useSourceControlPanelMock.mockReturnValue(options.scm);
   const summary = options.summary ?? makeSummary();
@@ -192,6 +175,12 @@ function renderPanel(options: {
       sourceControl={summary}
       onOpenGitGraph={options.onOpenGitGraph}
       onOpenDiff={onOpenDiff}
+      sections={options.sections}
+      sectionProps={{
+        repoRoot: "/repo",
+        workspace: { kind: "local" },
+        runInNewTerminal: vi.fn(async () => undefined),
+      }}
     />,
   );
   return { summary, onOpenDiff };
@@ -206,11 +195,7 @@ describe("SourceControlPanel states", () => {
     const { container } = (() => {
       useSourceControlPanelMock.mockReturnValue(makeScm());
       return render(
-        <SourceControlPanel
-          open={false}
-          sourceControl={makeSummary()}
-          onOpenDiff={vi.fn()}
-        />,
+        <SourceControlPanel open={false} sourceControl={makeSummary()} onOpenDiff={vi.fn()} />,
       );
     })();
     expect(container).toBeEmptyDOMElement();
@@ -245,6 +230,42 @@ describe("SourceControlPanel states", () => {
   it("shows the clean tree hint when ready without changes", () => {
     renderPanel({ scm: makeScm() });
     expect(screen.getByText("Working tree clean")).toBeInTheDocument();
+  });
+
+  it("mounts contributed sections only for a ready repository", () => {
+    const Reviews = () => <div>Hosted review section</div>;
+    const sections = [{ id: "reviews", label: "Reviews", Component: Reviews }];
+    const ready = renderPanel({ scm: makeScm(), sections });
+    expect(screen.getByText("Hosted review section")).toBeVisible();
+    cleanup();
+
+    renderPanel({
+      scm: makeScm({ panelState: "no-repo", repo: null, status: null }),
+      sections,
+    });
+    expect(screen.queryByText("Hosted review section")).not.toBeInTheDocument();
+    expect(ready.onOpenDiff).not.toHaveBeenCalled();
+  });
+
+  it("promotes view contributions beside Changes and gives the selected view the panel", () => {
+    const Reviews = () => <div>Hosted reviews workspace</div>;
+    renderPanel({
+      scm: makeScm(),
+      sections: [
+        {
+          id: "reviews",
+          label: "Reviews",
+          placement: "view",
+          Component: Reviews,
+        },
+      ],
+    });
+
+    expect(screen.getByRole("tab", { name: "Changes 0" })).toHaveAttribute("aria-selected", "true");
+    expect(screen.queryByText("Hosted reviews workspace")).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole("tab", { name: "Reviews" }));
+    expect(screen.getByText("Hosted reviews workspace")).toBeVisible();
+    expect(screen.queryByText("Working tree clean")).not.toBeInTheDocument();
   });
 
   it("labels a detached head", () => {
@@ -361,9 +382,7 @@ describe("header actions", () => {
   it("refreshes from the header button", async () => {
     const scm = makeScm();
     renderPanel({ scm });
-    fireEvent.click(
-      screen.getByRole("button", { name: "Refresh source control" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Refresh source control" }));
     await waitFor(() => {
       expect(scm.refresh).toHaveBeenCalled();
     });
@@ -379,9 +398,7 @@ describe("header actions", () => {
     });
     fireEvent.click(screen.getByRole("button", { name: "Fetch from remote" }));
     expect(summary.runRemoteAction).toHaveBeenCalledWith("fetch");
-    fireEvent.click(
-      screen.getByRole("button", { name: "Pull 1 commits (fast-forward)" }),
-    );
+    fireEvent.click(screen.getByRole("button", { name: "Pull 1 commits (fast-forward)" }));
     expect(summary.runRemoteAction).toHaveBeenCalledWith("pull");
   });
 });

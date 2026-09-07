@@ -274,9 +274,20 @@ function missingSession(error: unknown): boolean {
     "code" in error && (error as { readonly code?: unknown }).code === "SESSION_NOT_FOUND";
 }
 
+async function workspaceRootHash(rootPath: string, rigId?: string): Promise<string> {
+  const input = new TextEncoder().encode(`${rigId ?? "default"}\0${rootPath}`);
+  const digest = await globalThis.crypto.subtle.digest("SHA-256", input);
+  return Array.from(new Uint8Array(digest), (byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
 async function ensureSessionNow(
   sessionId: string,
-  input: { readonly title: string; readonly rigId?: string; readonly createdAt?: number },
+  input: {
+    readonly title: string;
+    readonly rigId?: string;
+    readonly workspaceRoot?: string;
+    readonly createdAt?: number;
+  },
 ): Promise<void> {
   const history = requiredHistory();
   const id = SessionId(sessionId);
@@ -287,6 +298,12 @@ async function ensureSessionNow(
     if (!missingSession(error)) throw error;
   }
   const createdAt = input.createdAt ?? Date.now();
+  const workspace = input.workspaceRoot
+    ? {
+        rootHash: await workspaceRootHash(input.workspaceRoot, input.rigId),
+        rootPath: input.workspaceRoot,
+      }
+    : undefined;
   await history.create({
     header: {
       formatVersion: SESSION_FORMAT_VERSION,
@@ -296,6 +313,7 @@ async function ensureSessionNow(
       backend: "chat",
       fidelity: "full",
       ...(input.rigId ? { rigId: input.rigId } : {}),
+      ...(workspace ? { workspace } : {}),
     },
     seed: [
       {
@@ -310,7 +328,12 @@ async function ensureSessionNow(
 
 export function ensureOwnedSession(
   sessionId: string,
-  input: { readonly title: string; readonly rigId?: string; readonly createdAt?: number },
+  input: {
+    readonly title: string;
+    readonly rigId?: string;
+    readonly workspaceRoot?: string;
+    readonly createdAt?: number;
+  },
 ): Promise<void> {
   return enqueueSession(sessionId, () => ensureSessionNow(sessionId, input));
 }
@@ -391,6 +414,14 @@ export async function setOwnedSessionTitle(input: {
     time: Date.now(),
     data: { title: input.title, source: input.source },
   }]);
+}
+
+export function setOwnedSessionWorkspace(sessionId: string, rootPath: string | null): Promise<void> {
+  return appendSessionEvents(sessionId, [{
+    type: "session/workspace",
+    time: Date.now(),
+    data: { rootPath, source: "tool" },
+  }], "written");
 }
 
 export function setOwnedSessionRig(
@@ -919,6 +950,7 @@ export async function readOwnedSession(sessionId: string): Promise<{
   readonly title: string;
   readonly updatedAt: number;
   readonly rigId: string;
+  readonly workspaceRoot?: string;
   readonly compaction?: SessionCompaction;
   readonly compactionPolicy?: CompactionPolicyState;
 }> {
@@ -935,8 +967,20 @@ export async function readOwnedSession(sessionId: string): Promise<{
   const rigId = rigEvent === undefined
     ? session.header.rigId ?? "default"
     : String((rigEvent.data as { readonly rigId: unknown }).rigId ?? "default");
+  let workspaceRoot = session.header.workspace?.rootPath;
+  let workspaceRig = session.header.rigId ?? "default";
+  for (const event of session.events) {
+    if (event.type === "session/workspace") {
+      workspaceRoot = (event.data as { rootPath: string | null }).rootPath ?? undefined;
+    } else if (event.type === "session/rig") {
+      const nextRig = String((event.data as { rigId: string | null }).rigId ?? "default");
+      if (nextRig !== workspaceRig) workspaceRoot = undefined;
+      workspaceRig = nextRig;
+    }
+  }
   return {
     header: session.header,
+    ...(workspaceRoot === undefined ? {} : { workspaceRoot }),
     messages: sessionUiMessages(session.header, session.events),
     title,
     rigId,

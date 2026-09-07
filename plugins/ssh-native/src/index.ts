@@ -4,7 +4,8 @@
  * the remote server. Connection and server lifecycle state stays in this
  * selected provider.
  */
-import { spawn } from "node:child_process";
+import { openSshAuthentication } from "./authentication";
+import { spawn, type ChildProcess } from "node:child_process";
 import { join } from "node:path";
 import { app } from "electron";
 import { emit } from "./events";
@@ -45,17 +46,30 @@ export function resolveTarget(payload: Record<string, unknown>): SshTarget {
 // production wiring — real spawn, broadcast, userData store — lives here.
 
 let forwards: ForwardManager | null = null;
+const forwardAuthentication = new WeakMap<ChildProcess, () => boolean>();
 
 /** Lazily created singleton shared by capability consumers and the before-quit
  * / process-exit teardown paths below. */
 export function forwardManager(): ForwardManager {
   forwards ??= createForwardManager({
-    spawnSsh: (args) =>
-      spawn("ssh", args, {
-        stdio: ["ignore", "ignore", "pipe"],
-        // OpenSSH messages are English-only, but keep parsing locale-proof.
-        env: { ...process.env, LC_ALL: "C" },
-      }),
+    spawnSsh: (args, target) => {
+      const auth = openSshAuthentication(target);
+      try {
+        const child = spawn("ssh", args, {
+          stdio: ["ignore", "ignore", "pipe"],
+          // OpenSSH messages are English-only, but keep parsing locale-proof.
+          env: { ...auth.env, LC_ALL: "C" },
+        });
+        forwardAuthentication.set(child, auth.waiting);
+        child.once("close", () => auth.close());
+        child.once("error", () => auth.close());
+        return child;
+      } catch (error) {
+        auth.close();
+        throw error;
+      }
+    },
+    authenticationPending: (child) => forwardAuthentication.get(child)?.() ?? false,
     sshArgs,
     resolveTarget: parseTarget,
     emit,

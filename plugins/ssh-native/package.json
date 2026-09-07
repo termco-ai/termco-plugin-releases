@@ -1,6 +1,6 @@
 {
   "name": "@termco-plugin/ssh-native",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "private": true,
   "type": "module",
   "dependencies": {
@@ -9,6 +9,10 @@
     "@termco/events-base": "1.0.0",
     "@termco/kernel": "1.0.0",
     "@termco/ssh-base": "1.0.0",
-    "@termco/workspace-base": "1.0.0"
+    "@termco/workspace-base": "1.0.0",
+    "@termco/storage-base": "1.0.0",
+    "@termco/ui-overlays-base": "1.0.0",
+    "@termco/ui": "1.0.0",
+    "react": "^19.2.7"
   }
 }

@@ -1,9 +1,5 @@
 import type { ContributionOwner, ContributionRecord, Dispose } from "@termco/kernel";
-import type {
-  UiHeaderFindOptions,
-  UiHeaderFindTarget,
-  UiHeaderTab,
-} from "@termco/ui-header-base";
+import type { UiHeaderFindOptions, UiHeaderFindTarget, UiHeaderTab } from "@termco/ui-header-base";
 import type { WorkspaceEnv } from "@termco/workspace-base";
 import type { ComponentType } from "react";
 
@@ -33,6 +29,7 @@ export interface UiTabDescriptor {
   kind: string;
   title: string;
   cold: boolean;
+  restoreOnRestart?: boolean;
   path?: string;
   url?: string;
   data?: Readonly<Record<string, unknown>>;
@@ -136,17 +133,12 @@ export interface UiTabKindContribution {
   kinds: readonly string[];
   mountWhen?: "always" | "whenOpen";
   receivesVisibility?: boolean;
-  canClose?(
-    tab: UiTabDescriptor,
-  ): Promise<UiTabCloseVerdict> | UiTabCloseVerdict;
+  canClose?(tab: UiTabDescriptor): Promise<UiTabCloseVerdict> | UiTabCloseVerdict;
   Component: ComponentType<UiTabSurfaceProps>;
 }
 
 export interface UiTabKindRegistry {
-  register(
-    entry: UiTabKindContribution,
-    owner: ContributionOwner,
-  ): Dispose;
+  register(entry: UiTabKindContribution, owner: ContributionOwner): Dispose;
   snapshot(): readonly UiTabKindContribution[];
   records(): readonly ContributionRecord<UiTabKindContribution>[];
   subscribe(listener: () => void): Dispose;

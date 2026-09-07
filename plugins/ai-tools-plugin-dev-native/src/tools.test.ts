@@ -545,6 +545,7 @@ describe("AI Tools: Plugin Development", () => {
     };
 
     expect(result.capabilities.map((entry) => entry.service).sort()).toEqual([
+      "source-control.sections",
       "ui.ai-dock.views",
       "ui.background.tasks",
       "ui.commands",
@@ -559,6 +560,22 @@ describe("AI Tools: Plugin Development", () => {
       "ui.workspace.footer",
       "ui.workspace.views",
     ]);
+  });
+
+  it("grounds a hosted-review section in the additive Source Control contract", () => {
+    const tools = createPluginDevelopmentTools(profile(), evidence(), reveal());
+
+    expect(tools.plugin_capabilities.execute({
+      query: "pull request source control section",
+    })).toMatchObject({
+      capabilities: [{
+        service: "source-control.sections",
+        contractPackage: "@termco/git-base",
+        serviceConstant: "SOURCE_CONTROL_SECTIONS_SERVICE",
+        registryType: "SourceControlSectionRegistry",
+        contributionType: "SourceControlSectionContribution",
+      }],
+    });
   });
 
   it("grounds a left-sidebar icon in the owning sidebar contract", () => {

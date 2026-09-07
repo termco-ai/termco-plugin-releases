@@ -29,11 +29,15 @@ import {
   resendOwnedSessionMessage,
   selectedDefaultModelId,
   setOwnedSessionRig,
+  setOwnedSessionWorkspace,
   setOwnedSessionTitle,
 } from "../runtime";
 import { EMPTY_PROVIDER_KEYS, IDLE_META, NOOP_LIVE } from "./constants";
 import { chats, seedMessages, toolContexts } from "./registry";
 import type { StoreState } from "./types";
+import { useAgentsStore } from "../baseline/store/agentsStore";
+
+let activationGeneration = 0;
 
 export const useChatStore = create<StoreState>((set, get) => {
   // Point `activeSessionId` at an EXISTING session, seeding its restored
@@ -44,7 +48,11 @@ export const useChatStore = create<StoreState>((set, get) => {
   // Restore from the canonical session surface on every activation path —
   // hydrate, rig switch, session switch — or old chats open empty.
   const seedThenActivate = (id: string, rigId: string): void => {
+    const generation = ++activationGeneration;
+    const isCurrent = () => generation === activationGeneration && get().currentRigId === rigId &&
+      get().sessions.some((session) => session.id === id && session.rigId === rigId);
     const doSet = () => {
+      if (!isCurrent()) return;
       const activeByRig = { ...get().activeByRig, [rigId]: id };
       set({ activeSessionId: id, activeByRig, agentMeta: IDLE_META });
       void saveActiveByRig(activeByRig);
@@ -53,24 +61,31 @@ export const useChatStore = create<StoreState>((set, get) => {
       doSet();
       return;
     }
-    void readOwnedSession(id)
-      .then((restored) => {
+    void readOwnedSession(id).then(
+      (restored) => {
+        if (!isCurrent()) return;
         if (restored.messages.length > 0 && !chats.has(id)) {
           seedMessages.set(id, [...restored.messages]);
         }
         set((state) => ({
           sessions: state.sessions.map((session) => {
             if (session.id !== id) return session;
-            const { compaction: _discardedCompaction, compactionPolicy: _discardedPolicy, ...base } = session;
+            const {
+              compaction: _discardedCompaction,
+              compactionPolicy: _discardedPolicy,
+              workspaceRoot: _discardedWorkspaceRoot,
+              ...base
+            } = session;
             return {
               ...base,
               title: restored.title,
-              rigId: restored.header.rigId ?? rigId,
+              rigId: restored.rigId,
+              ...(restored.workspaceRoot
+                ? { workspaceRoot: restored.workspaceRoot }
+                : {}),
               createdAt: restored.header.createdAt,
               updatedAt: restored.updatedAt,
-              ...(restored.compaction === undefined
-                ? {}
-                : { compaction: restored.compaction }),
+              ...(restored.compaction === undefined ? {} : { compaction: restored.compaction }),
               ...(restored.compactionPolicy === undefined
                 ? {}
                 : { compactionPolicy: restored.compactionPolicy }),
@@ -78,7 +93,9 @@ export const useChatStore = create<StoreState>((set, get) => {
           }),
         }));
         doSet();
-      }, (error: unknown) => {
+      },
+      (error: unknown) => {
+        if (!isCurrent()) return;
         set({
           agentMeta: {
             ...IDLE_META,
@@ -87,17 +104,18 @@ export const useChatStore = create<StoreState>((set, get) => {
           },
         });
         doSet();
-      });
+      },
+    );
   };
 
   // Resolve (or create) the active session for a rig and point
   // `activeSessionId` at it. Shared by hydrate and rig switches.
   const ensureActiveForRig = (rigId: string): void => {
+    activationGeneration += 1;
     const state = get();
     const current = state.activeByRig[rigId];
     const valid =
-      current != null &&
-      state.sessions.some((s) => s.id === current && s.rigId === rigId);
+      current != null && state.sessions.some((s) => s.id === current && s.rigId === rigId);
     if (valid) {
       if (state.activeSessionId !== current) seedThenActivate(current, rigId);
       return;
@@ -170,20 +188,14 @@ export const useChatStore = create<StoreState>((set, get) => {
     closeMini: () => set({ mini: { open: false } }),
     toggleMini: () =>
       set((s) =>
-        s.mini.open
-          ? { mini: { open: false } }
-          : { mini: { open: true }, panelOpen: false },
+        s.mini.open ? { mini: { open: false } } : { mini: { open: true }, panelOpen: false },
       ),
 
     panelOpen: false,
     openPanel: () => set({ panelOpen: true, mini: { open: false } }),
     closePanel: () => set({ panelOpen: false }),
     togglePanel: () =>
-      set((s) =>
-        s.panelOpen
-          ? { panelOpen: false }
-          : { panelOpen: true, mini: { open: false } },
-      ),
+      set((s) => (s.panelOpen ? { panelOpen: false } : { panelOpen: true, mini: { open: false } })),
 
     focusSignal: 0,
     pendingPrefill: null,
@@ -209,10 +221,7 @@ export const useChatStore = create<StoreState>((set, get) => {
         panelOpen: true,
         mini: { open: false },
         focusSignal: s.focusSignal + 1,
-        pendingSelections: [
-          ...s.pendingSelections,
-          { id, text: trimmed, source },
-        ],
+        pendingSelections: [...s.pendingSelections, { id, text: trimmed, source }],
       }));
     },
     consumeSelections: () => {
@@ -222,8 +231,7 @@ export const useChatStore = create<StoreState>((set, get) => {
     },
 
     agentMeta: IDLE_META,
-    patchAgentMeta: (patch) =>
-      set((s) => ({ agentMeta: { ...s.agentMeta, ...patch } })),
+    patchAgentMeta: (patch) => set((s) => ({ agentMeta: { ...s.agentMeta, ...patch } })),
     resetAgentMeta: () => set({ agentMeta: IDLE_META }),
 
     sessionsHydrated: false,
@@ -234,10 +242,7 @@ export const useChatStore = create<StoreState>((set, get) => {
 
     hydrateSessions: async () => {
       if (get().sessionsHydrated) return;
-      const [sessions, activeByRig] = await Promise.all([
-        listOwnedSessions(),
-        loadActiveByRig(),
-      ]);
+      const [sessions, activeByRig] = await Promise.all([listOwnedSessions(), loadActiveByRig()]);
       set({ sessions: [...sessions], activeByRig, sessionsHydrated: true });
       // Resolve (or create) the active session for whatever rig is current.
       ensureActiveForRig(get().currentRigId);
@@ -250,13 +255,15 @@ export const useChatStore = create<StoreState>((set, get) => {
       ensureActiveForRig(rigId);
     },
 
-    newSession: () => {
-      const rigId = get().currentRigId;
+    newSession: (input = {}) => {
+      activationGeneration += 1;
+      const rigId = input.rigId ?? get().currentRigId;
       const id = newSessionId();
       const meta: SessionMeta = {
         id,
         title: "New chat",
         rigId,
+        ...(input.workspaceRoot ? { workspaceRoot: input.workspaceRoot } : {}),
         createdAt: Date.now(),
         updatedAt: Date.now(),
       };
@@ -271,6 +278,7 @@ export const useChatStore = create<StoreState>((set, get) => {
       void ensureOwnedSession(id, {
         title: meta.title,
         rigId: meta.rigId,
+        ...(meta.workspaceRoot ? { workspaceRoot: meta.workspaceRoot } : {}),
         createdAt: meta.createdAt,
       });
       void saveActiveByRig(activeByRig);
@@ -289,7 +297,7 @@ export const useChatStore = create<StoreState>((set, get) => {
         origin,
       });
       await aiSessionsCapability.openSession(result.childSessionId);
-      if (extra) get().patchSession(result.childSessionId, extra);
+      if (extra) await get().patchSession(result.childSessionId, extra);
       return result.childSessionId;
     },
 
@@ -315,7 +323,12 @@ export const useChatStore = create<StoreState>((set, get) => {
       });
     },
 
-    patchSession: (id, patch) => {
+    patchSession: async (id, patch) => {
+      const session = get().sessions.find((candidate) => candidate.id === id);
+      if (session && "workspaceRoot" in patch && patch.workspaceRoot !== session.workspaceRoot) {
+        await ensureOwnedSession(id, session);
+        await setOwnedSessionWorkspace(id, patch.workspaceRoot ?? null);
+      }
       const next = get().sessions.map((s) =>
         s.id === id ? { ...s, ...patch, updatedAt: Date.now() } : s,
       );
@@ -323,6 +336,7 @@ export const useChatStore = create<StoreState>((set, get) => {
     },
 
     switchSession: (id) => {
+      activationGeneration += 1;
       if (get().activeSessionId === id) return;
       const rigId = get().currentRigId;
       // Only switch within the current rig (the picker is rig-filtered).
@@ -335,6 +349,7 @@ export const useChatStore = create<StoreState>((set, get) => {
     },
 
     deleteSession: async (id) => {
+      activationGeneration += 1;
       const target = get().sessions.find((s) => s.id === id);
       const rigId = target?.rigId ?? get().currentRigId;
       const remaining = get().sessions.filter((s) => s.id !== id);
@@ -379,6 +394,7 @@ export const useChatStore = create<StoreState>((set, get) => {
         void ensureOwnedSession(active.id, {
           title: active.title,
           rigId: active.rigId,
+          ...(active.workspaceRoot ? { workspaceRoot: active.workspaceRoot } : {}),
           createdAt: active.createdAt,
         });
       }
@@ -386,9 +402,10 @@ export const useChatStore = create<StoreState>((set, get) => {
     },
 
     reassignRig: (fromRigId, toRigId = DEFAULT_RIG_ID) => {
+      activationGeneration += 1;
       if (fromRigId === toRigId) return;
       const next = get().sessions.map((s) =>
-        s.rigId === fromRigId ? { ...s, rigId: toRigId } : s,
+        s.rigId === fromRigId ? { ...s, rigId: toRigId, workspaceRoot: undefined } : s,
       );
       for (const session of next) {
         if (get().sessions.find((candidate) => candidate.id === session.id)?.rigId === fromRigId) {
@@ -487,10 +504,9 @@ useChatStore.subscribe(refreshPublicSnapshot);
 
 function publicComposerAvailable(): boolean {
   const state = useChatStore.getState();
-  return [
-    ...Object.values(state.apiKeys),
-    ...Object.values(state.customEndpointKeys),
-  ].some(Boolean);
+  return [...Object.values(state.apiKeys), ...Object.values(state.customEndpointKeys)].some(
+    Boolean,
+  );
 }
 
 export const aiSessionsCapability: AiSessionsCapability = {
@@ -512,6 +528,18 @@ export const aiSessionsCapability: AiSessionsCapability = {
   },
   openMini: () => useChatStore.getState().openMini(),
   closeMini: () => useChatStore.getState().closeMini(),
+  startConversation(input = {}) {
+    const state = useChatStore.getState();
+    const sessionId = input.workspace
+      ? state.newSession({
+          rigId: input.workspace.rigId,
+          workspaceRoot: input.workspace.root,
+        })
+      : state.newSession();
+    if (input.agentId) useAgentsStore.getState().setActiveId(input.agentId);
+    state.focusInput(input.prefill ?? null);
+    return SessionId(sessionId);
+  },
   focusInput: (prefill) => {
     const state = useChatStore.getState();
     if (publicComposerAvailable()) state.focusInput(prefill);
@@ -526,25 +554,24 @@ export const aiSessionsCapability: AiSessionsCapability = {
     const state = useChatStore.getState();
     state.openPanel();
     if (!publicComposerAvailable()) return;
-    window.dispatchEvent(
-      new CustomEvent<string>("termco:ai-attach-file", { detail: path }),
-    );
+    window.dispatchEvent(new CustomEvent<string>("termco:ai-attach-file", { detail: path }));
     state.focusInput(null);
   },
   attachImage(input) {
     useChatStore.getState().openPanel();
-    window.dispatchEvent(
-      new CustomEvent("termco:ai-attach-image", { detail: input }),
-    );
+    window.dispatchEvent(new CustomEvent("termco:ai-attach-image", { detail: input }));
   },
   async openSession(sessionId) {
+    const generation = ++activationGeneration;
     const restored = await readOwnedSession(sessionId);
+    if (generation !== activationGeneration) return;
     const id = String(restored.header.id);
     const rigId = restored.rigId;
     if (chats.has(id)) {
       const { stopOwnedChat } = await import("../chatRuntime");
       await stopOwnedChat(id);
     }
+    if (generation !== activationGeneration) return;
     chats.delete(id);
     seedMessages.set(id, [...restored.messages]);
     const current = useChatStore.getState();
@@ -552,19 +579,19 @@ export const aiSessionsCapability: AiSessionsCapability = {
       id,
       title: restored.title,
       rigId,
+      ...(restored.workspaceRoot
+        ? { workspaceRoot: restored.workspaceRoot }
+        : {}),
       createdAt: restored.header.createdAt,
       updatedAt: restored.updatedAt,
-      ...(restored.compaction === undefined
-        ? {}
-        : { compaction: restored.compaction }),
+      ...(restored.compaction === undefined ? {} : { compaction: restored.compaction }),
       ...(restored.compactionPolicy === undefined
         ? {}
         : { compactionPolicy: restored.compactionPolicy }),
     };
-    const sessions = [
-      meta,
-      ...current.sessions.filter((candidate) => candidate.id !== id),
-    ].sort((left, right) => right.updatedAt - left.updatedAt);
+    const sessions = [meta, ...current.sessions.filter((candidate) => candidate.id !== id)].sort(
+      (left, right) => right.updatedAt - left.updatedAt,
+    );
     const activeByRig = { ...current.activeByRig, [rigId]: id };
     useChatStore.setState({
       sessions,

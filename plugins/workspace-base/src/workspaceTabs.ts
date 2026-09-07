@@ -4,6 +4,9 @@ export interface WorkspaceTabRecord {
   kind: string;
   title: string;
   cold?: boolean;
+  /** False for live remote/stateful surfaces that must close instead of being
+   * restored with stale data after an application or workspace restore. */
+  restoreOnRestart?: boolean;
   data?: Readonly<Record<string, unknown>>;
 }
 

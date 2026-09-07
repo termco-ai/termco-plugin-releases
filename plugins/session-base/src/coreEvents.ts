@@ -130,6 +130,10 @@ declare module "./events" {
     };
     "session/pin": { readonly pinned: boolean };
     "session/label": { readonly label: string; readonly operation: "add" | "remove" };
+    "session/workspace": {
+      readonly rootPath: string | null;
+      readonly source: "user" | "tool";
+    };
     "session/rig": {
       readonly rigId: string | null;
       readonly source: "user" | "workspace" | "fork";

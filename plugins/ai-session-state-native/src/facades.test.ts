@@ -23,6 +23,7 @@ function sessions(activeSessionId: string): AiSessionsCapability {
     togglePanel: vi.fn(),
     openMini: vi.fn(),
     closeMini: vi.fn(),
+    startConversation: vi.fn(() => SessionId("new-session")),
     focusInput: vi.fn(),
     attachSelection: vi.fn(),
     attachFile: vi.fn(),
@@ -62,6 +63,9 @@ describe("stable AI session state facades", () => {
 
   it("rejects new requests structurally while the execution host is absent", async () => {
     const state = createSessionStateFacades();
+    expect(() => state.sessions.startConversation()).toThrow(
+      expect.objectContaining({ code: "AI_SESSION_HOST_UNAVAILABLE" }),
+    );
     await expect(state.sessions.sendMessage("session-1", "hello")).rejects.toMatchObject({
       code: "AI_SESSION_HOST_UNAVAILABLE",
     });

@@ -2,7 +2,14 @@ export type PaneNode =
   | { kind: "leaf"; id: number; cwd?: string }
   | { kind: "split"; id: number; dir: "row" | "col"; children: PaneNode[] };
 
-type TabBase = { id: number; rigId: string; kind: string; title: string; cold?: boolean };
+type TabBase = {
+  id: number;
+  rigId: string;
+  kind: string;
+  title: string;
+  cold?: boolean;
+  restoreOnRestart?: boolean;
+};
 export type WorkspaceTab =
   | (TabBase & {
       kind: "terminal";
@@ -67,6 +74,7 @@ function serializeNode(node: PaneNode, activeLeafId: number): SerializedNode {
 }
 
 export function isSerializableTab(tab: WorkspaceTab): boolean {
+  if (tab.restoreOnRestart === false) return false;
   if (tab.kind.startsWith("plugin:")) return true;
   return tab.kind === "terminal"
     ? !tab.private
@@ -146,13 +154,43 @@ export function hydrateTabs(
           ...(source.customTitle !== undefined ? { customTitle: source.customTitle } : {}),
         });
       } else if (source.kind === "editor") {
-        tabs.push({ id: allocate(), rigId, kind: "editor", cold: true, title: basename(source.path), path: source.path, dirty: false, preview: false });
+        tabs.push({
+          id: allocate(),
+          rigId,
+          kind: "editor",
+          cold: true,
+          title: basename(source.path),
+          path: source.path,
+          dirty: false,
+          preview: false,
+        });
       } else if (source.kind === "preview") {
-        tabs.push({ id: allocate(), rigId, kind: "preview", cold: true, title: titleFromUrl(source.url), url: source.url });
+        tabs.push({
+          id: allocate(),
+          rigId,
+          kind: "preview",
+          cold: true,
+          title: titleFromUrl(source.url),
+          url: source.url,
+        });
       } else if (source.kind === "markdown") {
-        tabs.push({ id: allocate(), rigId, kind: "markdown", cold: true, title: basename(source.path), path: source.path });
+        tabs.push({
+          id: allocate(),
+          rigId,
+          kind: "markdown",
+          cold: true,
+          title: basename(source.path),
+          path: source.path,
+        });
       } else if (source.kind.startsWith("plugin:")) {
-        tabs.push({ id: allocate(), rigId, kind: source.kind, cold: true, title: source.title, ...(source.data !== undefined ? { data: source.data } : {}) });
+        tabs.push({
+          id: allocate(),
+          rigId,
+          kind: source.kind,
+          cold: true,
+          title: source.title,
+          ...(source.data !== undefined ? { data: source.data } : {}),
+        });
       }
     } catch {
       // A single corrupt snapshot entry must not prevent the others restoring.

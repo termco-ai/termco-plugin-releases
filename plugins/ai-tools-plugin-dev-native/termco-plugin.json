@@ -4,7 +4,7 @@
   "name": "AI Tools: Plugin Development",
   "description": "Lets AI discover plugin capabilities, create independent plugins, fork intentionally, inspect and edit managed source, and replace only on explicit request.",
   "category": "AI tools",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": { "renderer": "src/index.ts" },
   "dependencies": {
     "@termco/ai-tools-base": "1.0.0",

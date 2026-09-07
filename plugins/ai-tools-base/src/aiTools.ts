@@ -31,7 +31,9 @@ export interface AiToolMetadata {
 
 /** Normal tool: validation is followed by an implementation call. */
 export interface AiToolDefinition extends AiToolMetadata {
-  execute(input: unknown): unknown | PromiseLike<unknown>;
+  /** Honor the signal before further side effects. Returning means all owned
+   * side effects have completed or stopped; never detach a mutation promise. */
+  execute(input: unknown, context?: { readonly signal: AbortSignal }): unknown | PromiseLike<unknown>;
 }
 
 /** Interaction tool: the consuming UI renders the call, pauses the run, and
@@ -41,6 +43,14 @@ export interface AiInteractiveToolDefinition extends AiToolMetadata {
 }
 
 export type AiToolEntry = AiToolDefinition | AiInteractiveToolDefinition;
+
+/** Compact hints for progressive tool disclosure. Summaries advertise a
+ * contribution without exposing its schemas; activation phrases may eagerly
+ * expose only the named tools when the user's request clearly matches. */
+export interface AiToolDiscovery {
+  summary: string;
+  activationPhrases?: Readonly<Record<string, readonly string[]>>;
+}
 
 export type AiToolApprovalMode = "ask" | "allow-safe" | "deny";
 
@@ -75,6 +85,7 @@ export type AiToolExecutionError = {
   readonly name: string;
   readonly code: string;
   readonly message: string;
+  readonly executionState?: "stopping";
 };
 
 export type AiToolExecutionResult =
@@ -221,7 +232,7 @@ export interface AiToolRuntime {
   queueFileMutation?(mutation: AiToolFileMutation): void;
   /** Replace the owning session's complete visible task list. */
   replaceTodos?(sessionId: string, todos: readonly AiSessionTodo[]): void;
-  setWorkspaceFolder?(cwd: string): void;
+  setWorkspaceFolder?(cwd: string): void | Promise<void>;
   getTerminalContext?(): string | null;
   isActiveTerminalPrivate?(): boolean;
   injectIntoActivePty?(text: string): boolean;
@@ -292,6 +303,7 @@ export interface AiToolContribution {
   id: string;
   group: string;
   order?: number;
+  discovery?: AiToolDiscovery;
   /** Presentation adapters keyed by the tool name they normalize. */
   presentations?: Readonly<Record<string, AiToolPresentationAdapter>>;
   build(toolContext: AiToolRuntime): Record<string, AiToolEntry>;

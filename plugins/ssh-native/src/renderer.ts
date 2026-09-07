@@ -1,3 +1,7 @@
+import { createElement } from "react";
+import { EVENTS_APPLICATION_SERVICE, type ApplicationEventsCapability } from "@termco/events-base";
+import { UI_OVERLAYS_SERVICE, type UiOverlayRegistry } from "@termco/ui-overlays-base";
+import { AuthenticationDialog } from "./AuthenticationDialog";
 import {
   SSH_CLIENT_SERVICE,
   type SshCliOutput,
@@ -13,7 +17,7 @@ import {
 } from "@termco/kernel";
 
 const SAFE_CONNECTION_ID = /^[A-Za-z0-9][A-Za-z0-9_.@:-]*$/;
-const CONNECT_OPTIONS = ["-o", "BatchMode=yes", "-o", "ConnectTimeout=15"];
+const CONNECT_OPTIONS = ["-o", "BatchMode=no", "-o", "ConnectTimeout=15"];
 const REMOTE_PATH_PRELUDE =
   'PATH="$HOME/.local/bin:$HOME/.claude/local:$HOME/bin:$HOME/.npm-global/bin:/usr/local/bin:$PATH"; ' +
   'for d in "$HOME"/.nvm/versions/node/*/bin; do [ -d "$d" ] && PATH="$d:$PATH"; done; ' +
@@ -89,13 +93,18 @@ export function createRendererSshCapability(
 }
 
 const plugin: PluginModule = {
-  inject: [processTransportService],
-  activate(context) {
+  inject: [processTransportService, EVENTS_APPLICATION_SERVICE, UI_OVERLAYS_SERVICE],
+  async activate(context) {
     const transport = context.get<ProcessTransport>(processTransportService);
-    context.provide(
-      SSH_CLIENT_SERVICE,
-      createRendererSshCapability(transport),
-    );
+    const ssh = createRendererSshCapability(transport);
+    context.provide(SSH_CLIENT_SERVICE, ssh);
+    const events = context.get<ApplicationEventsCapability>(EVENTS_APPLICATION_SERVICE);
+    await context.effect(() => context.get<UiOverlayRegistry>(UI_OVERLAYS_SERVICE).register({
+      id: "ssh-authentication",
+      label: "SSH authentication",
+      description: "Enter and save SSH passwords or verify host keys.",
+      Component: () => createElement(AuthenticationDialog, { ssh, events }),
+    }, { pluginId: "ssh-native", generation: context.generation, key: "ssh-authentication" }));
   },
 };
 

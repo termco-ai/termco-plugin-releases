@@ -85,6 +85,7 @@ import { noteStreamError } from "./baseline/store/chatRuntime/overflow";
 import { useTodosStore } from "./baseline/store/todoStore";
 import {
   createToolDisclosure,
+  type ToolDiscoveryCapability,
   TOOL_SEARCH_NAME,
 } from "./toolDisclosure";
 
@@ -149,6 +150,12 @@ function sessionWorkspace(sessionId: string) {
     snapshot?.rigs.find((candidate) => candidate.id === snapshot.activeId);
 }
 
+function sessionToolRoot(sessionId: string): string | null {
+  return useChatStore
+    .getState()
+    .sessions.find((session) => session.id === sessionId)?.workspaceRoot ?? null;
+}
+
 function toolRuntime(sessionId: string): AiToolRuntime {
   const readCache = new Map<string, { size: number; hash: number }>();
   const runtime: AiToolRuntime = {
@@ -163,8 +170,11 @@ function toolRuntime(sessionId: string): AiToolRuntime {
       ...mutation,
       id: newQueuedEditId(),
     }),
-    getCwd: () => useChatStore.getState().live.getCwd(sessionRigId(sessionId)),
+    getCwd: () =>
+      sessionToolRoot(sessionId) ??
+      useChatStore.getState().live.getCwd(sessionRigId(sessionId)),
     getWorkspaceRoot: () =>
+      sessionToolRoot(sessionId) ??
       sessionWorkspace(sessionId)?.root ??
       useChatStore.getState().live.getWorkspaceRoot(),
     getRigRoot: () =>
@@ -180,7 +190,11 @@ function toolRuntime(sessionId: string): AiToolRuntime {
     runInTerminal: (command) =>
       useChatStore.getState().live.runInActiveTerminal(command, sessionRigId(sessionId)),
     getActiveViewKind: () => useChatStore.getState().live.getActiveKind(),
-    setWorkspaceFolder: (cwd) => useChatStore.getState().live.setAgentCwd(cwd),
+    setWorkspaceFolder: async (cwd) => {
+      const state = useChatStore.getState();
+      await state.patchSession(sessionId, { workspaceRoot: cwd });
+      state.live.setAgentCwd(cwd);
+    },
     openPreview: (url) => useChatStore.getState().live.openPreview(url),
     getBrowserTabId: () =>
       useChatStore.getState().live.getBrowserTabId(sessionRigId(sessionId)),
@@ -199,7 +213,9 @@ function toolRuntime(sessionId: string): AiToolRuntime {
       const rig = snapshot?.rigs.find((candidate) => candidate.id === rigId) ??
         snapshot?.rigs.find((candidate) => candidate.id === snapshot.activeId);
       return mcpToolsFor(
-        rig?.root ?? useChatStore.getState().live.getWorkspaceRoot(),
+        sessionToolRoot(sessionId) ??
+          rig?.root ??
+          useChatStore.getState().live.getWorkspaceRoot(),
         rig?.workspace ?? { kind: "local" },
       );
     },
@@ -244,16 +260,25 @@ type SessionToolRegistry = {
   definitions: Record<string, AiToolEntry>;
   groups: Map<string, string>;
   contributors: Map<string, PluginProvenance>;
+  capabilities: ToolDiscoveryCapability[];
 };
 
 function buildSessionToolRegistry(runtime: AiToolRuntime): SessionToolRegistry {
   const definitions: Record<string, AiToolEntry> = {};
   const groups = new Map<string, string>();
   const contributorsByTool = new Map<string, PluginProvenance>();
+  const capabilities: ToolDiscoveryCapability[] = [];
   for (const contribution of contributions) {
     const built = contribution.build(runtime);
     Object.assign(definitions, built);
-    for (const name of Object.keys(built)) {
+    const toolNames = Object.keys(built);
+    capabilities.push({
+      id: contribution.id,
+      group: contribution.group,
+      toolNames,
+      ...(contribution.discovery ?? {}),
+    });
+    for (const name of toolNames) {
       groups.set(name, contribution.group);
       contributorsByTool.set(name, {
         pluginId: contribution.id,
@@ -261,7 +286,23 @@ function buildSessionToolRegistry(runtime: AiToolRuntime): SessionToolRegistry {
       });
     }
   }
-  return { definitions, groups, contributors: contributorsByTool };
+  return {
+    definitions,
+    groups,
+    contributors: contributorsByTool,
+    capabilities,
+  };
+}
+
+function latestUserRequestText(messages: readonly UIMessage[]): string {
+  for (let index = messages.length - 1; index >= 0; index -= 1) {
+    const message = messages[index];
+    if (message?.role !== "user") continue;
+    return message.parts
+      .flatMap((part) => part.type === "text" ? [part.text] : [])
+      .join("\n");
+  }
+  return "";
 }
 
 export function activeSkillFromSteps(
@@ -1141,6 +1182,7 @@ export function createProviderTransport(
       const disclosure = createToolDisclosure({
         definitions: registry.definitions,
         groups: registry.groups,
+        capabilities: registry.capabilities,
         preferredGroups: agent?.preferredToolGroups,
         hiddenGroups: preferences.richChatUi ? [] : ["ui"],
       });
@@ -1151,6 +1193,7 @@ export function createProviderTransport(
         contributionId: "tool-disclosure",
       });
       const definitions = registry.definitions;
+      disclosure.prime(latestUserRequestText(options.messages));
       const initialActiveTools = disclosure.activeToolNames();
       let activeTurnHandle: ChatTurnHandle | null = null;
       const modelId = effectiveModelId();
@@ -1168,6 +1211,7 @@ export function createProviderTransport(
       await ensureOwnedSession(sessionId, {
         title: session?.title ?? "New chat",
         ...(session?.rigId ? { rigId: session.rigId } : {}),
+        ...(session?.workspaceRoot ? { workspaceRoot: session.workspaceRoot } : {}),
         ...(session?.createdAt ? { createdAt: session.createdAt } : {}),
       });
       await prepareOwnedSessionForContinuation(sessionId);
@@ -1189,10 +1233,10 @@ export function createProviderTransport(
         error: null,
       });
       const root = runtime.getWorkspaceRoot?.() ?? null;
-      const projectMemory = await readProjectMemory(root);
+      const projectMemory = await readProjectMemory(root, runtime.getWorkspaceEnv?.() ?? { kind: "local" });
       const envBlock = formatEnvBlock({
         workspaceRoot: root,
-        cwd: useChatStore.getState().live.getCwd(sessionRigId(sessionId)),
+        cwd: runtime.getCwd?.() ?? null,
         activeFile: useChatStore.getState().live.getActiveFile(),
         activeKind: useChatStore.getState().live.getActiveKind(),
         terminalPrivate: useChatStore

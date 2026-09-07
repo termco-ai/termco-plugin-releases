@@ -4,8 +4,10 @@
   "name": "AI Tools: Workflows",
   "description": "Lets the selected AI session search, run, and save workflows through the shared workflow library.",
   "category": "AI tools",
-  "version": "1.0.0",
-  "entrypoints": { "renderer": "src/index.ts" },
+  "version": "1.0.1",
+  "entrypoints": {
+    "renderer": "src/index.ts"
+  },
   "dependencies": {
     "@termco/ai-tools-base": "1.0.0",
     "@termco/kernel": "1.0.0",

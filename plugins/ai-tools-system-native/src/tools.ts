@@ -167,6 +167,9 @@ export function createSystemToolContribution(
     id: "system",
     group: "system",
     order: 80,
+    discovery: {
+      summary: "Use desktop notifications, clipboard, command history, and reveal paths in the operating system.",
+    },
     build: (context) =>
       buildSystemTools(desktop, history, context as SystemToolContext),
   };

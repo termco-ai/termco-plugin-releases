@@ -242,6 +242,9 @@ export function createGitToolContribution(git: GitCapability): AiToolContributio
     id: "git",
     group: "git",
     order: 50,
+    discovery: {
+      summary: "Inspect repositories, branches, commits, and diffs; perform approval-gated staging, commits, checkout, fetch, pull, and push.",
+    },
     build: (context) => buildGitTools(git, context as GitToolContext),
   };
 }

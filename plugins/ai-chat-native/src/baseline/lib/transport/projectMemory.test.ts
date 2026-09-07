@@ -34,7 +34,7 @@ describe("chat project memory", () => {
       } as unknown as WorkspaceRigsCapability,
     );
 
-    await expect(readProjectMemory("/repo/")).resolves.toBe(
+    await expect(readProjectMemory("/repo/", { kind: "local" })).resolves.toBe(
       "### AGENTS.md\nAgent rules\n\n### TERMCO.md\nTermco rules",
     );
     expect(readFile).toHaveBeenCalledTimes(3);
@@ -46,7 +46,20 @@ describe("chat project memory", () => {
   });
 
   it("ignores missing roots instead of probing the filesystem root", async () => {
-    await expect(readProjectMemory(null)).resolves.toBeNull();
-    await expect(readProjectMemory("/")).resolves.toBeNull();
+    await expect(readProjectMemory(null, { kind: "local" })).resolves.toBeNull();
+    await expect(readProjectMemory("/", { kind: "local" })).resolves.toBeNull();
   });
+});
+
+it("isolates identical paths across rigs and reads background sessions on their bound host", async () => {
+  const alpha = { kind: "ssh", connectionId: "alpha", host: "alpha.example" } as const;
+  const beta = { kind: "ssh", connectionId: "beta", host: "beta.example" } as const;
+  const readFile = vi.fn(async (_path, workspace) => ({ kind: "text", content: `${workspace.connectionId} instructions` }));
+  dispose = configureNativeFiles({ readFile } as unknown as WorkspaceFilesCapability, {
+    snapshot: () => ({ activeId: "beta", rigs: [{ id: "beta", workspace: beta }] }),
+  } as unknown as WorkspaceRigsCapability);
+  await expect(readProjectMemory("/workspace/app", alpha)).resolves.toBe("alpha instructions");
+  await expect(readProjectMemory("/workspace/app", beta)).resolves.toBe("beta instructions");
+  await expect(readProjectMemory("/workspace/app/", alpha)).resolves.toBe("alpha instructions");
+  expect(readFile).toHaveBeenCalledTimes(6);
 });

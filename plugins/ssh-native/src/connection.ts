@@ -5,6 +5,7 @@
  * process evicts the cache so the next call reconnects.
  */
 import { type ChildProcessWithoutNullStreams, spawn } from "node:child_process";
+import { openSshAuthentication, sshAuthentication } from "./authentication";
 import { ensureServer } from "./deploy";
 import { RpcClient } from "./rpc";
 import { assertSafeTarget, sshArgs } from "./runner";
@@ -54,7 +55,12 @@ async function connect(target: SshTarget): Promise<SshConnection> {
 
   setState(target.connectionId, "connecting");
   const args = sshArgs(target, [`${nodePath} ${serverPath} --stdio`], PERSIST_OPTS);
-  const child = spawn("ssh", args, { stdio: ["pipe", "pipe", "pipe"] });
+  const auth = openSshAuthentication(target);
+  let child: ChildProcessWithoutNullStreams;
+  try { child = spawn("ssh", args, { stdio: ["pipe", "pipe", "pipe"], env: auth.env }); }
+  catch (error) { auth.close(); throw error; }
+  child.once("close", () => auth.close());
+  child.once("error", () => auth.close());
 
   const client = new RpcClient((frame) => {
     if (child.stdin.writable) child.stdin.write(frame);
@@ -78,7 +84,9 @@ async function connect(target: SshTarget): Promise<SshConnection> {
   );
 
   const conn: SshConnection = { connectionId: target.connectionId, client, child, target };
-  await client.call("sys.ping"); // handshake proves the server booted
+  try { await client.call("sys.ping"); } // handshake proves the server booted
+  catch (error) { child.kill(); auth.close(); throw error; }
+  auth.close();
   setState(target.connectionId, "ready");
   for (const cb of readyObservers) {
     try {
@@ -136,6 +144,7 @@ export function connectionStatus(connectionId: string): SshConnectionStatus {
 }
 
 export async function disconnect(connectionId: string): Promise<void> {
+  sshAuthentication()?.cancel(connectionId);
   const entry = entries.get(connectionId);
   entries.delete(connectionId);
   if (!entry) return;

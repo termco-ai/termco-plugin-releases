@@ -4,8 +4,10 @@
   "name": "AI Session State",
   "description": "Keeps AI session and workspace composer identities available independently of Chat presentation and execution adapters.",
   "category": "Intelligence",
-  "version": "1.0.0",
-  "entrypoints": { "renderer": "src/plugin.ts" },
+  "version": "1.0.1",
+  "entrypoints": {
+    "renderer": "src/plugin.ts"
+  },
   "dependencies": {
     "@termco/ai-sessions-base": "1.0.0",
     "@termco/kernel": "1.0.0",

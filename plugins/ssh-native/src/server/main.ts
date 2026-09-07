@@ -58,6 +58,7 @@ import {
 } from "../protocol";
 import { joinDetectedPorts } from "../dockerPorts";
 import { listeningPorts } from "./net";
+import { forgeRun } from "./forge";
 import * as lsp from "./lsp";
 import * as search from "./search";
 import { createStateHub } from "./stateHub";
@@ -159,6 +160,7 @@ const methods: Record<string, (p: P) => unknown | Promise<unknown>> = {
   },
 
   "git.run": (p) => gitRun(p.cwd, p.args),
+  "forge.run": (p) => forgeRun(p),
 
   // Remote search via the host's own ripgrep (grep/find fallback).
   "fs.grep": (p) => search.grep(p.pattern, p.root, p.glob, p.caseInsensitive, p.maxResults),

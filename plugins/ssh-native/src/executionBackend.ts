@@ -1,3 +1,4 @@
+import { openSshAuthentication } from "./authentication";
 import type { SshClientCapability, SshTarget, SshWorkspace } from "@termco/ssh-base";
 import type {
   WorkspaceEnv,
@@ -46,6 +47,9 @@ export function createSshWorkspaceExecutionBackend(
       const remote = sshWorkspace(workspace);
       if (request.domain !== "ssh") {
         throw new Error(`SSH execution backend cannot prepare ${request.domain}.${request.method}`);
+      }
+      if (request.method === "authentication") {
+        return openSshAuthentication(target(remote)) as T;
       }
       if (request.method === "sshArgs") {
         return ssh.sshArgs(

@@ -56,6 +56,8 @@ export type SessionMeta = {
   title: string;
   /** The rig this chat is tagged with (a filter, not exclusive ownership). */
   rigId: string;
+  /** Exact session-bound tool root. Omitted for ordinary rig-root conversations. */
+  workspaceRoot?: string;
   createdAt: number;
   updatedAt: number;
   /** Rebuildable view derived from canonical compaction events; never persisted. */

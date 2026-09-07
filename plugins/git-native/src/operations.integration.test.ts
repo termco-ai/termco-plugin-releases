@@ -3,7 +3,7 @@
  * repo.
  */
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, rmSync, writeFileSync } from "node:fs";
+import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import { beforeEach, describe, expect, it } from "vitest";
@@ -15,7 +15,8 @@ const LOCAL = { kind: "local" as const };
 
 function repo(): string {
   const dir = mkdtempSync(join(tmpdir(), "termco-gitint-"));
-  const git = (...a: string[]) => execFileSync("git", a, { cwd: dir, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
+  const git = (...a: string[]) =>
+    execFileSync("git", a, { cwd: dir, env: { ...process.env, GIT_TERMINAL_PROMPT: "0" } });
   git("init", "-b", "main");
   git("config", "user.email", "t@t.dev");
   git("config", "user.name", "T");
@@ -135,9 +136,7 @@ describe("git operations (integration)", () => {
       // "branch already exists".
       await ops.checkoutBranch(clone, "origin/feature-x", LOCAL);
       const res = await ops.listBranches(clone, LOCAL);
-      expect(res.branches.find((b) => b.name === "feature-x")?.isHead).toBe(
-        true,
-      );
+      expect(res.branches.find((b) => b.name === "feature-x")?.isHead).toBe(true);
     });
 
     it("still checks out a plain local branch", async () => {
@@ -146,6 +145,44 @@ describe("git operations (integration)", () => {
       const res = await ops.listBranches(clone, LOCAL);
       expect(res.branches.find((b) => b.name === "main")?.isHead).toBe(true);
     });
+  });
+
+  it("isolates repeated review preparations and preserves another session’s dirty files", async () => {
+    writeFileSync(join(dir, "a.txt"), "review\n");
+    await ops.stage(dir, ["a.txt"], LOCAL);
+    const commit = await ops.commit(dir, "review head", LOCAL);
+    execFileSync("git", ["update-ref", "refs/pull/42/head", commit.commitSha], { cwd: dir });
+    const clone = mkdtempSync(join(tmpdir(), "termco-gitint-review-"));
+    execFileSync("git", ["clone", dir, "."], { cwd: clone });
+
+    const created = await ops.prepareReviewWorktree(
+      clone,
+      "origin",
+      "refs/pull/42/head",
+      commit.commitSha,
+      `github-42-${commit.commitSha.slice(0, 12)}`,
+      LOCAL,
+    );
+    expect(created.reused).toBe(false);
+    expect(created.path).toContain("termco-review-worktrees");
+    expect(
+      execFileSync("git", ["rev-parse", "HEAD"], { cwd: created.path }).toString().trim(),
+    ).toBe(commit.commitSha);
+    expect(
+      execFileSync("git", ["branch", "--show-current"], { cwd: clone }).toString().trim(),
+    ).toBe("main");
+
+    const prepare = () => ops.prepareReviewWorktree(clone, "origin", "refs/pull/42/head", commit.commitSha, `github-42-${commit.commitSha.slice(0, 12)}`, LOCAL);
+    const second = await prepare();
+    expect(second.path).not.toBe(created.path);
+    writeFileSync(join(created.path, "a.txt"), "another session's work\n");
+    writeFileSync(join(second.path, "untracked.txt"), "keep me\n");
+    const third = await prepare();
+    expect(third.reused).toBe(false);
+    expect(readFileSync(join(third.path, "a.txt"), "utf8")).toBe("review\n");
+    expect(readFileSync(join(created.path, "a.txt"), "utf8")).toBe("another session's work\n");
+    expect(readFileSync(join(second.path, "untracked.txt"), "utf8")).toBe("keep me\n");
+
   });
 
   it("commit_files reports the files in a commit with numstat", async () => {

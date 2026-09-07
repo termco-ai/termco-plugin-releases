@@ -4,8 +4,10 @@
   "name": "AI Chat Sessions",
   "description": "Owns application-wide chat sessions, transcript restoration, session navigation, model selection, and chat surface state.",
   "category": "Intelligence",
-  "version": "1.0.3",
-  "entrypoints": { "renderer": "src/plugin.ts" },
+  "version": "1.0.4",
+  "entrypoints": {
+    "renderer": "src/plugin.ts"
+  },
   "dependencies": {
     "@ai-sdk/openai": "^4.0.41",
     "@ai-sdk/react": "^4.0.67",

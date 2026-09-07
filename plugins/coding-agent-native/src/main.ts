@@ -270,11 +270,18 @@ const spawn: SpawnFn = (bin, args, opts) => {
     // MAX_THINKING_TOKENS, …) into the remote command — env doesn't cross ssh.
     // The TOKEN is deliberately excluded: it rides on stdin (never in `ps`).
     const { TERMCO_MCP_TOKEN: _t, ...remoteEnv } = opts.adapterEnv ?? {};
-    const child = nodeSpawn(
-      "ssh",
-      sshSpawnArgs(opts.workspace, bin, args, opts.cwd, tunnel, withToken, remoteEnv),
-      { env: process.env, stdio: [stdinMode, "pipe", "pipe"] },
-    ) as unknown as ChildLike;
+    const sshArgs = sshSpawnArgs(opts.workspace, bin, args, opts.cwd, tunnel, withToken, remoteEnv);
+    const authentication = codingAgentRuntime().execution.prepare<{ env: NodeJS.ProcessEnv; close(): void }>(
+      opts.workspace, { domain: "ssh", method: "authentication", args: [] },
+    );
+    let child: ChildLike;
+    try {
+      child = nodeSpawn("ssh", sshArgs, {
+        env: authentication.env, stdio: [stdinMode, "pipe", "pipe"],
+      }) as unknown as ChildLike;
+    } catch (error) { authentication.close(); throw error; }
+    child.on("close", () => authentication.close());
+    child.on("error", () => authentication.close());
     // The remote `read` consumes this first line BEFORE exec, so the CLI never
     // sees it. Close stdin immediately afterwards; keeping the pipe open makes
     // CLIs wait for input they do not consume in non-interactive mode.

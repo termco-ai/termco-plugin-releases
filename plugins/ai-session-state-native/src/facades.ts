@@ -66,9 +66,12 @@ export function createSessionStateFacades(): {
     togglePanel: () => sessionDelegate?.togglePanel(),
     openMini: () => sessionDelegate?.openMini(),
     closeMini: () => sessionDelegate?.closeMini(),
+    startConversation(input) {
+      if (!sessionDelegate) throw new AiSessionHostUnavailableError();
+      return sessionDelegate.startConversation(input);
+    },
     focusInput: (prefill) => sessionDelegate?.focusInput(prefill),
-    attachSelection: (value, source) =>
-      sessionDelegate?.attachSelection(value, source),
+    attachSelection: (value, source) => sessionDelegate?.attachSelection(value, source),
     attachFile: (path) => sessionDelegate?.attachFile(path),
     attachImage: (input) => sessionDelegate?.attachImage(input),
     async openSession(sessionId) {
@@ -79,8 +82,7 @@ export function createSessionStateFacades(): {
       if (!sessionDelegate) throw new AiSessionHostUnavailableError();
       return sessionDelegate.rerunFrom(input);
     },
-    sessionContext: (sessionId) =>
-      sessionDelegate?.sessionContext(sessionId) ?? null,
+    sessionContext: (sessionId) => sessionDelegate?.sessionContext(sessionId) ?? null,
     async sendMessage(sessionId, text) {
       if (!sessionDelegate) throw new AiSessionHostUnavailableError();
       await sessionDelegate.sendMessage(sessionId, text);

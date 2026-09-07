@@ -139,6 +139,9 @@ export function createWorkflowToolContribution(
     id: "workflows",
     group: "terminal",
     order: 110,
+    discovery: {
+      summary: "Discover and run repository-defined workflows instead of reconstructing their commands manually.",
+    },
     build: (context) => buildWorkflowTools(library, context as WorkflowToolContext),
   };
 }

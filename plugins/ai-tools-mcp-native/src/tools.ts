@@ -75,6 +75,9 @@ export function createMcpToolContribution(
     id: "mcp",
     group: "mcp",
     order: 210,
+    discovery: {
+      summary: "Call tools supplied by the workspace's enabled and connected MCP integrations.",
+    },
     build: (context) => buildMcpTools(clients, context as McpToolContext),
   };
 }

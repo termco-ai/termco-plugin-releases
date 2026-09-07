@@ -4,6 +4,8 @@
  * canonicalized.
  */
 import type { WorkspaceEnv } from "@termco/workspace-base";
+import { randomUUID } from "node:crypto";
+import { posix, win32 } from "node:path";
 import { ensureSuccess, GitError } from "./errors";
 import { pathspec, pathspecFromInput, resolvePathspecs, resolveWithinRepo } from "./pathspec";
 import {
@@ -93,6 +95,11 @@ export interface GitBranchListResult {
   branches: GitBranchEntry[];
 }
 
+export interface GitReviewWorktreeResult {
+  path: string;
+  reused: boolean;
+}
+
 // ---- shared helpers -------------------------------------------------------
 export function shaIsSafe(sha: string): boolean {
   return /^[0-9a-fA-F]{4,64}$/.test(sha);
@@ -122,14 +129,22 @@ export function nothingToCommit(output: GitOutput): boolean {
 
 export function statusLabelFor(c: string): string {
   switch (c) {
-    case "A": return "Added";
-    case "M": return "Modified";
-    case "D": return "Deleted";
-    case "R": return "Renamed";
-    case "C": return "Copied";
-    case "T": return "Type changed";
-    case "U": return "Unmerged";
-    default: return `Status ${c}`;
+    case "A":
+      return "Added";
+    case "M":
+      return "Modified";
+    case "D":
+      return "Deleted";
+    case "R":
+      return "Renamed";
+    case "C":
+      return "Copied";
+    case "T":
+      return "Type changed";
+    case "U":
+      return "Unmerged";
+    default:
+      return `Status ${c}`;
   }
 }
 
@@ -170,7 +185,11 @@ export async function unstage(repoRoot: string, paths: string[], ws: WorkspaceEn
   ensureSuccess(rm, "git rm --cached failed");
 }
 
-export async function discard(repoRoot: string, entries: DiscardEntry[], ws: WorkspaceEnv): Promise<void> {
+export async function discard(
+  repoRoot: string,
+  entries: DiscardEntry[],
+  ws: WorkspaceEnv,
+): Promise<void> {
   const r = await root(repoRoot, ws);
   if (entries.length === 0) return;
   const tracked: string[] = [];
@@ -180,17 +199,31 @@ export async function discard(repoRoot: string, entries: DiscardEntry[], ws: Wor
     (e.untracked ? untracked : tracked).push(spec);
   }
   if (tracked.length) {
-    const out = await runGit(ws, r, ["restore", "--worktree", "--", ...tracked], DEFAULT_TIMEOUT_SECS);
+    const out = await runGit(
+      ws,
+      r,
+      ["restore", "--worktree", "--", ...tracked],
+      DEFAULT_TIMEOUT_SECS,
+    );
     ensureSuccess(out, "git restore failed");
   }
   if (untracked.length) {
-    const out = await runGit(ws, r, ["clean", "-f", "-d", "--", ...untracked], DEFAULT_TIMEOUT_SECS);
+    const out = await runGit(
+      ws,
+      r,
+      ["clean", "-f", "-d", "--", ...untracked],
+      DEFAULT_TIMEOUT_SECS,
+    );
     ensureSuccess(out, "git clean failed");
   }
 }
 
 // ---- commit / commit files -------------------------------------------------
-export async function commit(repoRoot: string, message: string, ws: WorkspaceEnv): Promise<GitCommitResult> {
+export async function commit(
+  repoRoot: string,
+  message: string,
+  ws: WorkspaceEnv,
+): Promise<GitCommitResult> {
   const r = await root(repoRoot, ws);
   const trimmed = message.trim();
   if (!trimmed) throw new GitError("commandFailed", "empty commit message");
@@ -206,7 +239,10 @@ export async function commit(repoRoot: string, message: string, ws: WorkspaceEnv
 }
 
 export function parseDiffTreeNameStatus(bytes: Buffer): GitCommitFileChange[] {
-  const tokens = bytes.toString("utf8").split("\0").filter((t) => t.length > 0);
+  const tokens = bytes
+    .toString("utf8")
+    .split("\0")
+    .filter((t) => t.length > 0);
   const files: GitCommitFileChange[] = [];
   let i = 0;
   while (i < tokens.length) {
@@ -216,19 +252,41 @@ export function parseDiffTreeNameStatus(bytes: Buffer): GitCommitFileChange[] {
       const original = tokens[i++];
       const newPath = tokens[i++];
       if (original == null || newPath == null) break;
-      files.push({ path: newPath, originalPath: original, status: statusChar, statusLabel: statusLabelFor(statusChar), added: 0, removed: 0, isBinary: false });
+      files.push({
+        path: newPath,
+        originalPath: original,
+        status: statusChar,
+        statusLabel: statusLabelFor(statusChar),
+        added: 0,
+        removed: 0,
+        isBinary: false,
+      });
     } else {
       const path = tokens[i++];
       if (path == null) break;
-      files.push({ path, originalPath: null, status: statusChar, statusLabel: statusLabelFor(statusChar), added: 0, removed: 0, isBinary: false });
+      files.push({
+        path,
+        originalPath: null,
+        status: statusChar,
+        statusLabel: statusLabelFor(statusChar),
+        added: 0,
+        removed: 0,
+        isBinary: false,
+      });
     }
   }
   return files;
 }
 
 export function applyNumstat(files: GitCommitFileChange[], bytes: Buffer): void {
-  const tokens = bytes.toString("utf8").split("\0").filter((t) => t.length > 0);
-  const stats = new Map<string, { added: number; removed: number; isBinary: boolean; original: string | null }>();
+  const tokens = bytes
+    .toString("utf8")
+    .split("\0")
+    .filter((t) => t.length > 0);
+  const stats = new Map<
+    string,
+    { added: number; removed: number; isBinary: boolean; original: string | null }
+  >();
   let i = 0;
   while (i < tokens.length) {
     const header = tokens[i++];
@@ -263,28 +321,60 @@ export function applyNumstat(files: GitCommitFileChange[], bytes: Buffer): void 
   }
 }
 
-export async function commitFiles(repoRoot: string, sha: string, ws: WorkspaceEnv): Promise<GitCommitFileChange[]> {
+export async function commitFiles(
+  repoRoot: string,
+  sha: string,
+  ws: WorkspaceEnv,
+): Promise<GitCommitFileChange[]> {
   const r = await root(repoRoot, ws);
   if (!shaIsSafe(sha)) throw GitError.command("git diff-tree", "invalid commit sha");
-  const ns = await runGit(ws, r, ["diff-tree", "--no-commit-id", "-r", "-z", "-M", "--name-status", sha], DEFAULT_TIMEOUT_SECS);
+  const ns = await runGit(
+    ws,
+    r,
+    ["diff-tree", "--no-commit-id", "-r", "-z", "-M", "--name-status", sha],
+    DEFAULT_TIMEOUT_SECS,
+  );
   ensureSuccess(ns, "git diff-tree failed");
   const files = parseDiffTreeNameStatus(ns.stdout);
   if (files.length === 0) return files;
-  const numstat = await runGit(ws, r, ["diff-tree", "--no-commit-id", "-r", "-z", "-M", "--numstat", sha], DEFAULT_TIMEOUT_SECS);
+  const numstat = await runGit(
+    ws,
+    r,
+    ["diff-tree", "--no-commit-id", "-r", "-z", "-M", "--numstat", sha],
+    DEFAULT_TIMEOUT_SECS,
+  );
   ensureSuccess(numstat, "git diff-tree failed");
   applyNumstat(files, numstat.stdout);
   return files;
 }
 
-export async function commitFileDiff(repoRoot: string, sha: string, path: string, originalPath: string | undefined, ws: WorkspaceEnv): Promise<GitDiffContentResult> {
+export async function commitFileDiff(
+  repoRoot: string,
+  sha: string,
+  path: string,
+  originalPath: string | undefined,
+  ws: WorkspaceEnv,
+): Promise<GitDiffContentResult> {
   const r = await root(repoRoot, ws);
   if (!shaIsSafe(sha)) throw GitError.command("git show", "invalid commit sha");
   const rel = pathspec(r, resolveWithinRepo(r, path));
   const originalRel = originalPath ? pathspec(r, resolveWithinRepo(r, originalPath)) : rel;
   const parent = await gitStdoutLineOpt(ws, r, ["rev-parse", `${sha}^`]);
-  const original: TextSource = parent ? await gitShowText(ws, r, `${parent}:${originalRel}`) : { kind: "missing" };
+  const original: TextSource = parent
+    ? await gitShowText(ws, r, `${parent}:${originalRel}`)
+    : { kind: "missing" };
   const modified = await gitShowText(ws, r, `${sha}:${rel}`);
-  const diffArgs = ["show", "--no-color", "--no-ext-diff", "--format=", "-m", "--first-parent", sha, "--", rel];
+  const diffArgs = [
+    "show",
+    "--no-color",
+    "--no-ext-diff",
+    "--format=",
+    "-m",
+    "--first-parent",
+    sha,
+    "--",
+    rel,
+  ];
   if (originalRel !== rel) diffArgs.push(originalRel);
   const patch = await runGit(ws, r, diffArgs, DEFAULT_TIMEOUT_SECS);
   ensureSuccess(patch, "git show <commit> -- <path> failed");
@@ -305,7 +395,12 @@ function sideState(src: TextSource): DiffSideState {
 }
 
 // ---- diff ------------------------------------------------------------------
-async function diffInner(r: string, path: string | undefined, staged: boolean, ws: WorkspaceEnv): Promise<GitDiffResult> {
+async function diffInner(
+  r: string,
+  path: string | undefined,
+  staged: boolean,
+  ws: WorkspaceEnv,
+): Promise<GitDiffResult> {
   const args = ["diff", "--no-ext-diff"];
   if (staged) args.push("--cached");
   const spec = path ? pathspecFromInput(r, path) : null;
@@ -315,12 +410,23 @@ async function diffInner(r: string, path: string | undefined, staged: boolean, w
   return { diffText: output.stdout.toString("utf8"), truncated: output.truncated };
 }
 
-export async function diff(repoRoot: string, path: string | undefined, staged: boolean, ws: WorkspaceEnv): Promise<GitDiffResult> {
+export async function diff(
+  repoRoot: string,
+  path: string | undefined,
+  staged: boolean,
+  ws: WorkspaceEnv,
+): Promise<GitDiffResult> {
   const r = await root(repoRoot, ws);
   return diffInner(r, path && path.length ? path : undefined, staged, ws);
 }
 
-export async function diffContent(repoRoot: string, path: string, staged: boolean, originalPath: string | undefined, ws: WorkspaceEnv): Promise<GitDiffContentResult> {
+export async function diffContent(
+  repoRoot: string,
+  path: string,
+  staged: boolean,
+  originalPath: string | undefined,
+  ws: WorkspaceEnv,
+): Promise<GitDiffContentResult> {
   const r = await root(repoRoot, ws);
   const worktreePath = resolveWithinRepo(r, path);
   const relPath = pathspec(r, worktreePath);
@@ -349,7 +455,12 @@ export async function diffContent(repoRoot: string, path: string, staged: boolea
 // ---- sync ------------------------------------------------------------------
 export async function push(repoRoot: string, ws: WorkspaceEnv): Promise<GitPushResult> {
   const r = await root(repoRoot, ws);
-  const upstream = await gitStdoutLineOpt(ws, r, ["rev-parse", "--abbrev-ref", "--symbolic-full-name", "@{u}"]);
+  const upstream = await gitStdoutLineOpt(ws, r, [
+    "rev-parse",
+    "--abbrev-ref",
+    "--symbolic-full-name",
+    "@{u}",
+  ]);
   if (!upstream) throw new GitError("commandFailed", "no upstream configured");
   const output = await runGit(ws, r, ["push"], NETWORK_TIMEOUT_SECS);
   ensureSuccess(output, "git push failed");
@@ -359,57 +470,112 @@ export async function push(repoRoot: string, ws: WorkspaceEnv): Promise<GitPushR
 
 export async function fetch(repoRoot: string, ws: WorkspaceEnv): Promise<void> {
   const r = await root(repoRoot, ws);
-  ensureSuccess(await runGit(ws, r, ["fetch", "--prune"], NETWORK_TIMEOUT_SECS), "git fetch failed");
+  ensureSuccess(
+    await runGit(ws, r, ["fetch", "--prune"], NETWORK_TIMEOUT_SECS),
+    "git fetch failed",
+  );
 }
 
 export async function pullFfOnly(repoRoot: string, ws: WorkspaceEnv): Promise<void> {
   const r = await root(repoRoot, ws);
-  ensureSuccess(await runGit(ws, r, ["pull", "--ff-only"], NETWORK_TIMEOUT_SECS), "git pull --ff-only failed");
+  ensureSuccess(
+    await runGit(ws, r, ["pull", "--ff-only"], NETWORK_TIMEOUT_SECS),
+    "git pull --ff-only failed",
+  );
 }
 
 // ---- branch ----------------------------------------------------------------
-export function pushWorktree(branches: GitBranchEntry[], path: string, branch: string | null, headSha: string | null): void {
+export function pushWorktree(
+  branches: GitBranchEntry[],
+  path: string,
+  branch: string | null,
+  headSha: string | null,
+): void {
   let name: string;
   if (branch) name = branch;
   else if (headSha) name = `(detached @ ${headSha.length >= 7 ? headSha.slice(0, 7) : headSha})`;
   else return;
-  branches.push({ name, kind: "worktree", worktreePath: path, isHead: false, isDetached: branch == null });
+  branches.push({
+    name,
+    kind: "worktree",
+    worktreePath: path,
+    isHead: false,
+    isDetached: branch == null,
+  });
 }
 
-export async function listBranches(repoRoot: string, ws: WorkspaceEnv): Promise<GitBranchListResult> {
+export async function listBranches(
+  repoRoot: string,
+  ws: WorkspaceEnv,
+): Promise<GitBranchListResult> {
   const r = await root(repoRoot, ws);
   const branches: GitBranchEntry[] = [];
-  const current = await gitStdoutLineOpt(ws, r, ["rev-parse", "--abbrev-ref", "HEAD"]).catch(() => null);
+  const current = await gitStdoutLineOpt(ws, r, ["rev-parse", "--abbrev-ref", "HEAD"]).catch(
+    () => null,
+  );
   const isDetachedHead = current === "HEAD";
   const localNames = new Set<string>();
-  for (const line of await gitStdoutLines(ws, r, ["branch", "--format=%(refname:short)%00%(HEAD)%00%(upstream:short)"])) {
+  for (const line of await gitStdoutLines(ws, r, [
+    "branch",
+    "--format=%(refname:short)%00%(HEAD)%00%(upstream:short)",
+  ])) {
     const [name, headMarker, upstream] = line.split("\0");
     if (name) {
       const isHead = headMarker === "*";
       localNames.add(name);
-      branches.push({ name, kind: "local", worktreePath: null, isHead, isDetached: isHead && isDetachedHead, upstream: upstream || null });
+      branches.push({
+        name,
+        kind: "local",
+        worktreePath: null,
+        isHead,
+        isDetached: isHead && isDetachedHead,
+        upstream: upstream || null,
+      });
     }
   }
   // Remote-tracking refs. `for-each-ref` is used rather than `git branch -r`
   // because it never decorates the output ("-> " for symrefs, leading spaces).
   // A remote whose short name already exists locally is dropped: checking it
   // out would land on the local branch anyway, so listing both is noise.
-  for (const name of await gitStdoutLines(ws, r, ["for-each-ref", "--format=%(refname:short)", "refs/remotes"])) {
+  for (const name of await gitStdoutLines(ws, r, [
+    "for-each-ref",
+    "--format=%(refname:short)",
+    "refs/remotes",
+  ])) {
     if (!name) continue;
     const [, short] = splitUpstream(name);
     // `origin/HEAD` is a symbolic pointer at the default branch, not a branch.
     if (short === "HEAD" || short == null) continue;
     if (localNames.has(short)) continue;
-    branches.push({ name, kind: "remote", worktreePath: null, isHead: false, isDetached: false, upstream: null });
+    branches.push({
+      name,
+      kind: "remote",
+      worktreePath: null,
+      isHead: false,
+      isDetached: false,
+      upstream: null,
+    });
   }
   // worktree list
-  let curWt: string | null = null, wtBranch: string | null = null, wtBare = false, headSha: string | null = null;
-  const flush = () => { if (curWt && !wtBare) pushWorktree(branches, curWt, wtBranch, headSha); };
+  let curWt: string | null = null,
+    wtBranch: string | null = null,
+    wtBare = false,
+    headSha: string | null = null;
+  const flush = () => {
+    if (curWt && !wtBare) pushWorktree(branches, curWt, wtBranch, headSha);
+  };
   for (const line of await gitStdoutLines(ws, r, ["worktree", "list", "--porcelain"])) {
-    if (line.startsWith("worktree ")) { flush(); curWt = line.slice(9).trim(); wtBranch = null; wtBare = false; headSha = null; }
-    else if (line.startsWith("HEAD ")) headSha = line.slice(5).trim();
-    else if (line.startsWith("branch ")) { const raw = line.slice(7).trim(); wtBranch = raw.startsWith("refs/heads/") ? raw.slice("refs/heads/".length) : raw; }
-    else if (line.startsWith("bare")) wtBare = true;
+    if (line.startsWith("worktree ")) {
+      flush();
+      curWt = line.slice(9).trim();
+      wtBranch = null;
+      wtBare = false;
+      headSha = null;
+    } else if (line.startsWith("HEAD ")) headSha = line.slice(5).trim();
+    else if (line.startsWith("branch ")) {
+      const raw = line.slice(7).trim();
+      wtBranch = raw.startsWith("refs/heads/") ? raw.slice("refs/heads/".length) : raw;
+    } else if (line.startsWith("bare")) wtBare = true;
   }
   flush();
   // dedupe (prefer worktree over local except current)
@@ -419,7 +585,12 @@ export async function listBranches(repoRoot: string, ws: WorkspaceEnv): Promise<
     const existingIdx = seen.get(b.name);
     if (existingIdx != null) {
       const existing = deduped[existingIdx];
-      if (b.kind === "worktree" && existing.kind === "local" && existing.worktreePath == null && !existing.isHead) {
+      if (
+        b.kind === "worktree" &&
+        existing.kind === "local" &&
+        existing.worktreePath == null &&
+        !existing.isHead
+      ) {
         deduped[existingIdx] = { ...b, isHead: existing.isHead || b.isHead };
       } else if (b.isHead && !existing.isHead) {
         deduped[existingIdx] = { ...existing, isHead: true };
@@ -445,9 +616,14 @@ export async function listBranches(repoRoot: string, ws: WorkspaceEnv): Promise<
  * branch. `git switch --track` is the modern spelling, `checkout -b --track`
  * the fallback for git < 2.23.
  */
-export async function checkoutBranch(repoRoot: string, branchName: string, ws: WorkspaceEnv): Promise<void> {
+export async function checkoutBranch(
+  repoRoot: string,
+  branchName: string,
+  ws: WorkspaceEnv,
+): Promise<void> {
   const r = await root(repoRoot, ws);
-  if (!branchName || branchName.startsWith("-")) throw new GitError("commandFailed", `invalid path: ${branchName}`);
+  if (!branchName || branchName.startsWith("-"))
+    throw new GitError("commandFailed", `invalid path: ${branchName}`);
 
   const [remote, short] = splitUpstream(branchName);
   const isRemoteRef =
@@ -457,15 +633,23 @@ export async function checkoutBranch(repoRoot: string, branchName: string, ws: W
     (await gitStdoutLines(ws, r, ["remote"]).catch((): string[] => [])).includes(remote);
 
   if (!isRemoteRef) {
-    ensureSuccess(await runGit(ws, r, ["checkout", branchName], DEFAULT_TIMEOUT_SECS), "git checkout failed");
+    ensureSuccess(
+      await runGit(ws, r, ["checkout", branchName], DEFAULT_TIMEOUT_SECS),
+      "git checkout failed",
+    );
     return;
   }
 
   // A local branch of the same name already exists — plain checkout, so we
   // don't fail with "branch already exists".
-  const localExists = (await gitStdoutLines(ws, r, ["branch", "--format=%(refname:short)"]).catch((): string[] => [])).includes(short);
+  const localExists = (
+    await gitStdoutLines(ws, r, ["branch", "--format=%(refname:short)"]).catch((): string[] => [])
+  ).includes(short);
   if (localExists) {
-    ensureSuccess(await runGit(ws, r, ["checkout", short], DEFAULT_TIMEOUT_SECS), "git checkout failed");
+    ensureSuccess(
+      await runGit(ws, r, ["checkout", short], DEFAULT_TIMEOUT_SECS),
+      "git checkout failed",
+    );
     return;
   }
 
@@ -482,10 +666,64 @@ export function isRemoteNameChar(c: string): boolean {
   return /[A-Za-z0-9]/.test(c) || c === "-" || c === "_" || c === ".";
 }
 
-export async function remoteUrl(repoRoot: string, name: string, ws: WorkspaceEnv): Promise<string | null> {
+export async function remoteUrl(
+  repoRoot: string,
+  name: string,
+  ws: WorkspaceEnv,
+): Promise<string | null> {
   const r = await root(repoRoot, ws);
   if (!name || name.length > 64 || ![...name].every(isRemoteNameChar)) return null;
   return gitStdoutLineOpt(ws, r, ["config", "--get", `remote.${name}.url`]);
+}
+
+export async function prepareReviewWorktree(
+  repoRoot: string,
+  remoteName: string,
+  ref: string,
+  expectedSha: string,
+  key: string,
+  ws: WorkspaceEnv,
+): Promise<GitReviewWorktreeResult> {
+  const r = await root(repoRoot, ws);
+  if (!remoteName || remoteName.length > 64 || ![...remoteName].every(isRemoteNameChar)) {
+    throw GitError.command("git worktree", "invalid remote name");
+  }
+  if (!/^refs\/(?:pull|merge-requests)\/[1-9]\d*\/head$/.test(ref)) {
+    throw GitError.command("git worktree", "invalid hosted-review ref");
+  }
+  if (!shaIsSafe(expectedSha) || !/^[a-z0-9._-]{1,96}$/i.test(key)) {
+    throw GitError.command("git worktree", "invalid review identity");
+  }
+  const commonDirOutput = await runGit(
+    ws,
+    r,
+    ["rev-parse", "--path-format=absolute", "--git-common-dir"],
+    DEFAULT_TIMEOUT_SECS,
+  );
+  ensureSuccess(commonDirOutput, "git could not locate its private directory");
+  const commonDir = commonDirOutput.stdout.toString("utf8").trim();
+  if (!commonDir) throw GitError.command("git worktree", "git returned an empty common directory");
+  const paths =
+    ws?.kind === "ssh" || ws?.kind === "wsl" || process.platform !== "win32" ? posix : win32;
+  // A clean HEAD cannot establish that another AI session is not using the
+  // directory. Every preparation owns a new worktree; existing edits stay put.
+  const target = paths.join(commonDir, "termco-review-worktrees", `${key}-${randomUUID()}`);
+  ensureSuccess(
+    await runGit(ws, r, ["fetch", "--no-tags", remoteName, ref], NETWORK_TIMEOUT_SECS),
+    "git could not fetch the hosted review",
+  );
+  const fetched = await gitStdoutLineOpt(ws, r, ["rev-parse", "FETCH_HEAD"]);
+  if (fetched !== expectedSha) {
+    throw GitError.command(
+      "git worktree",
+      "the fetched review head did not match the inspected revision",
+    );
+  }
+  ensureSuccess(
+    await runGit(ws, r, ["worktree", "add", "--detach", target, expectedSha], NETWORK_TIMEOUT_SECS),
+    "git could not create the isolated review worktree",
+  );
+  return { path: target, reused: false };
 }
 
 // ---- log -------------------------------------------------------------------
@@ -493,7 +731,9 @@ export function parseShortstat(tail: string): [number, number, number] {
   for (const line of tail.split("\n")) {
     const trimmed = line.trim();
     if (!(trimmed.includes("file changed") || trimmed.includes("files changed"))) continue;
-    let files = 0, ins = 0, del = 0;
+    let files = 0,
+      ins = 0,
+      del = 0;
     for (const part of trimmed.split(",")) {
       const p = part.trim();
       const n = Number.parseInt(p.split(/\s+/)[0] ?? "0", 10) || 0;
@@ -506,10 +746,21 @@ export function parseShortstat(tail: string): [number, number, number] {
   return [0, 0, 0];
 }
 
-export async function log(repoRoot: string, limit: number, beforeSha: string | undefined, ws: WorkspaceEnv): Promise<GitLogEntry[]> {
+export async function log(
+  repoRoot: string,
+  limit: number,
+  beforeSha: string | undefined,
+  ws: WorkspaceEnv,
+): Promise<GitLogEntry[]> {
   const r = await root(repoRoot, ws);
   const bounded = Math.min(Math.max(limit, 1), MAX_LOG_LIMIT);
-  const args = ["log", "--no-color", "--shortstat", `--max-count=${bounded}`, `--format=${LOG_FORMAT}`];
+  const args = [
+    "log",
+    "--no-color",
+    "--shortstat",
+    `--max-count=${bounded}`,
+    `--format=${LOG_FORMAT}`,
+  ];
   if (beforeSha) {
     if (!shaIsSafe(beforeSha)) throw GitError.command("git log", "invalid cursor sha");
     args.push(`${beforeSha}^`);
@@ -518,7 +769,12 @@ export async function log(repoRoot: string, limit: number, beforeSha: string | u
   if (output.timedOut) throw new GitError("timedOut", "git log timed out");
   if (output.exitCode !== 0) {
     const stderr = output.stderr.toString("utf8").toLowerCase();
-    if (stderr.includes("does not have any commits yet") || stderr.includes("bad default revision") || stderr.includes("unknown revision") || stderr.includes("ambiguous argument 'head'")) {
+    if (
+      stderr.includes("does not have any commits yet") ||
+      stderr.includes("bad default revision") ||
+      stderr.includes("unknown revision") ||
+      stderr.includes("ambiguous argument 'head'")
+    ) {
       return [];
     }
     ensureSuccess(output, "git log failed");
@@ -544,7 +800,10 @@ export async function log(repoRoot: string, limit: number, beforeSha: string | u
         insertions: 0,
         deletions: 0,
       });
-    } else if (entries.length && (line.includes("file changed") || line.includes("files changed"))) {
+    } else if (
+      entries.length &&
+      (line.includes("file changed") || line.includes("files changed"))
+    ) {
       const [f, ins, del] = parseShortstat(line);
       const cur = entries[entries.length - 1];
       cur.filesChanged = f;
@@ -555,10 +814,19 @@ export async function log(repoRoot: string, limit: number, beforeSha: string | u
   return entries;
 }
 
-export async function showCommitDiff(repoRoot: string, sha: string, ws: WorkspaceEnv): Promise<GitDiffResult> {
+export async function showCommitDiff(
+  repoRoot: string,
+  sha: string,
+  ws: WorkspaceEnv,
+): Promise<GitDiffResult> {
   const r = await root(repoRoot, ws);
   if (!shaIsSafe(sha)) throw GitError.command("git show", "invalid commit identifier");
-  const output = await runGit(ws, r, ["show", "--no-color", "--no-ext-diff", "--patch-with-stat", sha, "--"], DEFAULT_TIMEOUT_SECS);
+  const output = await runGit(
+    ws,
+    r,
+    ["show", "--no-color", "--no-ext-diff", "--patch-with-stat", sha, "--"],
+    DEFAULT_TIMEOUT_SECS,
+  );
   ensureSuccess(output, "git show failed");
   return { diffText: output.stdout.toString("utf8"), truncated: output.truncated };
 }

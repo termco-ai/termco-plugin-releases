@@ -1,0 +1,12 @@
+{
+  "schemaVersion": 3,
+  "id": "forge-reviews-base",
+  "name": "Forge Reviews Base",
+  "description": "Public hosted-review inspection, isolated-worktree, and confirmed-comment contracts.",
+  "category": "Contracts",
+  "version": "1.0.0",
+  "dependencies": {
+    "@termco/kernel": "1.0.0",
+    "@termco/workspace-base": "1.0.0"
+  }
+}

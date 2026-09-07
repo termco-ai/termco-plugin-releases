@@ -107,6 +107,9 @@ export function createSubagentContribution(
     id: "subagent",
     group: "agents",
     order: 185,
+    discovery: {
+      summary: "Delegate bounded work to background subagents with restricted tool groups.",
+    },
     build: (runtime) => createSubagentTools({ inference, toolsets, runtime }),
   };
 }

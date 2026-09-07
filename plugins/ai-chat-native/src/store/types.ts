@@ -130,7 +130,7 @@ export type StoreState = {
   hydrateSessions: () => Promise<void>;
   /** Point the chat at `rigId`'s active session (creating one if needed). */
   setCurrentRig: (rigId: string) => void;
-  newSession: () => string;
+  newSession: (input?: { rigId?: string; workspaceRoot?: string }) => string;
   /** Fork the active conversation at a message into a new session (branch).
    * Returns the new session id, or null when it can't fork. */
   branchFrom: (messageId: string) => Promise<string | null>;
@@ -143,7 +143,7 @@ export type StoreState = {
     origin?: "fork" | "compaction";
     extra?: Partial<SessionMeta>;
   }) => Promise<string>;
-  patchSession: (id: string, patch: Partial<SessionMeta>) => void;
+  patchSession: (id: string, patch: Partial<SessionMeta>) => Promise<void>;
   switchSession: (id: string) => void;
   deleteSession: (id: string) => Promise<void>;
   /** Re-tag a deleted rig's chats onto another rig (default: Default). */

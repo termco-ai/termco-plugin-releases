@@ -26,7 +26,7 @@ const RESOLVE_FAIL = `console.error("ssh: Could not resolve hostname host: noden
 const LISTEN_THEN_DIE = `console.error("debug1: Local forwarding listening on 127.0.0.1 port 9999."); setTimeout(() => process.exit(255), 150);`;
 
 function harness(
-  opts: { storeFile?: string | null; activeFallbackMs?: number } = {},
+  opts: { storeFile?: string | null; activeFallbackMs?: number; authenticationPending?: () => boolean } = {},
 ) {
   const behaviors: string[] = [];
   const spawned: ChildProcess[] = [];
@@ -38,6 +38,7 @@ function harness(
       spawned.push(child);
       return child;
     },
+    authenticationPending: opts.authenticationPending,
     sshArgs: (_t: SshTarget, _r: string[], extra: string[]) => extra,
     resolveTarget: (connectionId) => ({ connectionId, host: connectionId }),
     emit: (event, payload) => events.push({ event, payload }),
@@ -89,6 +90,17 @@ describe("forward lifecycle", () => {
     expect(f.state).toBe("starting");
     await waitFor(state(h.manager, f.id), (v) => v?.state === "active");
     expect(h.events.some((e) => e.event === "ssh:forwards-changed")).toBe(true);
+  });
+
+  it("does not report a forward active while the password dialog is waiting", async () => {
+    let waiting = true;
+    const h = track(harness({ activeFallbackMs: 20, authenticationPending: () => waiting }));
+    h.behaviors.push(SILENT);
+    const f = await h.manager.add("host1", { localPort: 9997, remotePort: 80 });
+    await new Promise((resolve) => setTimeout(resolve, 100));
+    expect((await h.manager.list())[0]?.state).toBe("starting");
+    waiting = false;
+    await waitFor(state(h.manager, f.id), (value) => value?.state === "active");
   });
 
   it("falls back to active when the child stays alive without the line", async () => {

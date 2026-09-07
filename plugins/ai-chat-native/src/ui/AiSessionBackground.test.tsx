@@ -120,4 +120,17 @@ describe("AiSessionBackground workspace restoration", () => {
     await act(async () => resolveLoad(null));
     expect(useChatStore.getState().snapshotAvailable).toBe(true);
   });
+
+  it("treats a not-yet-persisted session as having no workspace snapshot", async () => {
+    useChatStore.setState({ snapshotAvailable: true });
+    sessionMocks.loadSnapshot.mockRejectedValueOnce(new Error("session does not exist"));
+
+    render(<AiSessionBackground workspaceRigs={rigs()} workspaceTabs={tabs()} />);
+
+    await act(async () => {
+      await Promise.resolve();
+    });
+
+    expect(useChatStore.getState().snapshotAvailable).toBe(false);
+  });
 });

@@ -50,7 +50,15 @@ export class BrowserToolSet {
   constructor(private readonly browser: BrowserAutomationCapability) {}
 
   contribution(): AiToolContribution {
-    return { id: "browser", group: "browser", order: 190, build: (runtime) => this.tools(runtime) };
+    return {
+      id: "browser",
+      group: "browser",
+      order: 190,
+      discovery: {
+        summary: "Navigate, inspect, debug, and interact with the same embedded browser tabs the user sees.",
+      },
+      build: (runtime) => this.tools(runtime),
+    };
   }
 
   policy(): AiBrowserPolicyCapability {

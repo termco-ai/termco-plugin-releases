@@ -55,7 +55,8 @@ export type ForwardAddInput = {
 
 export type ForwardManagerDeps = {
   /** Spawn the ssh binary with the given argv (injectable for tests). */
-  spawnSsh: (args: string[]) => ChildProcess;
+  spawnSsh: (args: string[], target: SshTarget) => ChildProcess;
+  authenticationPending?: (child: ChildProcess) => boolean;
   /** Build the ssh argv for a target (production: runner.ts sshArgs). */
   sshArgs: (target: SshTarget, remote: string[], extraOpts: string[]) => string[];
   /** connectionId → validated target (production: ssh/index.ts parseTarget). */
@@ -358,7 +359,7 @@ export function createForwardManager(deps: ForwardManagerDeps) {
 
     let child: ChildProcess;
     try {
-      child = deps.spawnSsh(args);
+      child = deps.spawnSsh(args, e.target);
     } catch (err) {
       e.state = "error";
       e.error = `failed to spawn ssh: ${String(err)}`;
@@ -394,10 +395,15 @@ export function createForwardManager(deps: ForwardManagerDeps) {
       if (e.lineBuf.length > 16 * 1024) e.lineBuf = e.lineBuf.slice(-8 * 1024);
     });
 
-    e.fallbackTimer = setTimeout(() => {
+    const checkActive = () => {
       if (stale() || e.state === "active") return;
+      if (deps.authenticationPending?.(child)) {
+        e.fallbackTimer = setTimeout(checkActive, 250);
+        return;
+      }
       markActive(e, gen, child);
-    }, activeFallback);
+    };
+    e.fallbackTimer = setTimeout(checkActive, activeFallback);
 
     const onSettled = (cause: string | null) => {
       if (settled) return;

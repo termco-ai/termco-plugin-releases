@@ -83,9 +83,25 @@ export class FileToolSet {
 
   contributions(): AiToolContribution[] {
     return [
-      { id: "fs", group: "files", order: 10, build: (runtime) => this.fsTools(runtime) },
+      {
+        id: "fs",
+        group: "files",
+        order: 10,
+        discovery: {
+          summary: "Inspect and manage workspace files and directories with structured, approval-aware operations.",
+        },
+        build: (runtime) => this.fsTools(runtime),
+      },
       { id: "edit", group: "files", order: 20, build: (runtime) => this.editTools(runtime) },
-      { id: "search", group: "files", order: 30, build: (runtime) => this.searchTools(runtime) },
+      {
+        id: "search",
+        group: "files",
+        order: 30,
+        discovery: {
+          summary: "Search workspace paths and file contents without relying on shell commands.",
+        },
+        build: (runtime) => this.searchTools(runtime),
+      },
     ];
   }
 

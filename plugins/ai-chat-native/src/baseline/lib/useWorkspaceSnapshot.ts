@@ -46,6 +46,7 @@ function recordToTab(record: WorkspaceTabRecord): Tab | null {
     kind: record.kind,
     title: record.title,
     ...(record.cold === undefined ? {} : { cold: record.cold }),
+    ...(record.restoreOnRestart === undefined ? {} : { restoreOnRestart: record.restoreOnRestart }),
   };
   if (
     record.kind === "terminal" &&
@@ -61,9 +62,7 @@ function recordToTab(record: WorkspaceTabRecord): Tab | null {
       ...(typeof data.cwd === "string" ? { cwd: data.cwd } : {}),
       ...(data.private === true ? { private: true } : {}),
       ...(data.blocks === true ? { blocks: true } : {}),
-      ...(typeof data.customTitle === "string"
-        ? { customTitle: data.customTitle }
-        : {}),
+      ...(typeof data.customTitle === "string" ? { customTitle: data.customTitle } : {}),
     };
   }
   if (record.kind === "editor" && typeof data.path === "string") {
@@ -82,7 +81,7 @@ function recordToTab(record: WorkspaceTabRecord): Tab | null {
 }
 
 function tabToRecord(tab: Tab): WorkspaceTabRecord {
-  const { id, rigId, kind, title, cold } = tab;
+  const { id, rigId, kind, title, cold, restoreOnRestart } = tab;
   const data =
     kind === "terminal"
       ? {
@@ -91,16 +90,22 @@ function tabToRecord(tab: Tab): WorkspaceTabRecord {
           ...(tab.cwd === undefined ? {} : { cwd: tab.cwd }),
           ...(tab.private === undefined ? {} : { private: tab.private }),
           ...(tab.blocks === undefined ? {} : { blocks: tab.blocks }),
-          ...(tab.customTitle === undefined
-            ? {}
-            : { customTitle: tab.customTitle }),
+          ...(tab.customTitle === undefined ? {} : { customTitle: tab.customTitle }),
         }
       : kind === "editor" || kind === "markdown"
         ? { path: tab.path }
         : kind === "preview"
           ? { url: tab.url }
           : { ...(tab.data ?? {}) };
-  return { id, rigId, kind, title, ...(cold === undefined ? {} : { cold }), data };
+  return {
+    id,
+    rigId,
+    kind,
+    title,
+    ...(cold === undefined ? {} : { cold }),
+    ...(restoreOnRestart === undefined ? {} : { restoreOnRestart }),
+    data,
+  };
 }
 
 function terminalCwd(tab: Tab): string | null {
@@ -125,12 +130,12 @@ export function useWorkspaceSnapshot({
   useEffect(() => {
     if (!enabled || !activeSessionId) return;
     const timer = setTimeout(() => {
-      const rigTabs = tabs.flatMap((record) => {
-        const tab = recordToTab(record);
-        return tab ? [tab] : [];
-      }).filter(
-        (t) => t.rigId === activeRigId && isSerializableTab(t),
-      );
+      const rigTabs = tabs
+        .flatMap((record) => {
+          const tab = recordToTab(record);
+          return tab ? [tab] : [];
+        })
+        .filter((t) => t.rigId === activeRigId && isSerializableTab(t));
       if (rigTabs.length === 0) return;
       void saveSnapshot(activeSessionId, {
         tabs: serializeTabs(rigTabs),
@@ -150,11 +155,19 @@ export function useWorkspaceSnapshot({
       return;
     }
     let alive = true;
-    void loadSnapshot(activeSessionId).then((snap) => {
-      if (alive && availabilityRevision.current === revision) {
-        setSnapshotAvailable(!!snap && snap.tabs.length > 0);
-      }
-    });
+    void loadSnapshot(activeSessionId)
+      .then((snap) => {
+        if (alive && availabilityRevision.current === revision) {
+          setSnapshotAvailable(!!snap && snap.tabs.length > 0);
+        }
+      })
+      .catch(() => {
+        // A freshly-created chat can become active just before its canonical
+        // session record has finished persisting. It has no snapshot yet.
+        if (alive && availabilityRevision.current === revision) {
+          setSnapshotAvailable(false);
+        }
+      });
     return () => {
       alive = false;
     };
@@ -163,11 +176,7 @@ export function useWorkspaceSnapshot({
   // Restore (non-destructive): reopen the snapshot's tabs into the current
   // rig, deduped, without wiping what's already open.
   const restore = useCallback(async () => {
-    const {
-      activeSessionId: sid,
-      activeRigId: rigId,
-      tabs: cur,
-    } = latest.current;
+    const { activeSessionId: sid, activeRigId: rigId, tabs: cur } = latest.current;
     if (!sid) return;
     const snap = await loadSnapshot(sid);
     if (!snap || snap.tabs.length === 0) return;
@@ -179,14 +188,10 @@ export function useWorkspaceSnapshot({
       return tab ? [tab] : [];
     });
     const rigTabs = currentTabs.filter((t) => t.rigId === rigId);
-    const existingCwds = new Set(
-      rigTabs.map(terminalCwd).filter((c): c is string => c != null),
-    );
+    const existingCwds = new Set(rigTabs.map(terminalCwd).filter((c): c is string => c != null));
     const existingPaths = new Set(
       rigTabs
-        .filter(
-          (t): t is Extract<Tab, { kind: "editor" }> => t.kind === "editor",
-        )
+        .filter((t): t is Extract<Tab, { kind: "editor" }> => t.kind === "editor")
         .map((t) => t.path),
     );
     const additions = rebuilt.filter((t) => {

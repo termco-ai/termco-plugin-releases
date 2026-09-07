@@ -4,6 +4,7 @@ type Entry<T> = {
   readonly concurrency: ToolConcurrency;
   run?: () => Promise<T>;
   commit?: (value: T) => Promise<void>;
+  settled?: () => Promise<void> | undefined;
   started: boolean;
   ready: boolean;
   value?: T;
@@ -50,11 +51,13 @@ export class OrderedToolScheduler<T> {
     order: number,
     run: () => Promise<T>,
     commit: (value: T) => Promise<void>,
+    settled?: () => Promise<void> | undefined,
   ): Promise<T> {
     const entry = this.#entry(order);
     if (entry.run || entry.ready) {
       throw new Error(`tool call ${order} already has an execution outcome`);
     }
+    entry.settled = settled;
     entry.run = run;
     entry.commit = commit;
     this.#pump();
@@ -112,10 +115,16 @@ export class OrderedToolScheduler<T> {
       (value) => {
         entry.value = value;
         entry.ready = true;
-        if (concurrency === "safe") this.#runningSafe -= 1;
-        else this.#exclusiveRunning = false;
         void this.#commitReady();
-        this.#pump();
+        // A timeout result can be committed promptly while the underlying
+        // operation is still stopping. Keep its concurrency slot until then.
+        void Promise.resolve(entry.settled?.()).then(() => {
+          if (concurrency === "safe") this.#runningSafe -= 1;
+          else this.#exclusiveRunning = false;
+          entry.run = undefined;
+          entry.settled = undefined;
+          this.#pump();
+        }, (error) => this.#fail(error));
       },
       (error) => this.#fail(error),
     );

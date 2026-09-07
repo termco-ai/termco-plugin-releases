@@ -13,7 +13,12 @@ import {
 import { DESKTOP_INTEGRATION_SERVICE, type DesktopIntegrationCapability } from "@termco/desktop-base";
 import { EVENTS_APPLICATION_SERVICE, type ApplicationEventsCapability } from "@termco/events-base";
 import { WORKSPACE_FILE_ICONS_SERVICE, type WorkspaceFileIconsCapability } from "@termco/files-base";
-import { GIT_REPOSITORY_SERVICE, type GitCapability } from "@termco/git-base";
+import {
+  GIT_REPOSITORY_SERVICE,
+  SOURCE_CONTROL_SECTIONS_SERVICE,
+  type GitCapability,
+  type SourceControlSectionRegistry,
+} from "@termco/git-base";
 import {
   createLiveOptionalFacade,
   type Dispose,
@@ -46,6 +51,8 @@ import {
   setSourceControlContext,
   sourceControlContext,
 } from "./runtime";
+import { createSourceControlSectionRegistry } from "./sectionRegistry";
+import { useSyncExternalStore } from "react";
 
 function createBadge() {
   return function useSourceControlBadge({
@@ -61,11 +68,17 @@ function createBadge() {
 function createPanel(
   tabs: WorkspaceTabsCapability,
   navigation: ReturnType<typeof createSourceControlNavigation>,
+  sections: SourceControlSectionRegistry,
 ) {
   return function SourceControlSidebar(props: UiSidebarViewProps) {
     setSourceControlContext(props.rootPath, props.workspace);
     const contextPath = useSourceControlContextPath(tabs, props.rootPath);
     const summary = useSourceControl(contextPath, props.workspace, true);
+    const sectionContributions = useSyncExternalStore(
+      sections.subscribe,
+      sections.snapshot,
+      sections.snapshot,
+    );
     return (
       <SourceControlPanel
         open
@@ -74,6 +87,12 @@ function createPanel(
         onOpenGitGraph={() => void navigation.openGraph()}
         onOpenFile={(path) => props.openFile(path, true)}
         onNavigateToPath={props.navigateToPath}
+        sections={sectionContributions}
+        sectionProps={{
+          repoRoot: summary.repo?.repoRoot ?? contextPath ?? props.rootPath ?? "",
+          workspace: props.workspace,
+          runInNewTerminal: props.runInNewTerminal,
+        }}
       />
     );
   };
@@ -94,6 +113,8 @@ const plugin: PluginModule = {
     WORKSPACE_FILE_ICONS_SERVICE,
   ],
   async activate(context) {
+    const sections = createSourceControlSectionRegistry();
+    context.provide(SOURCE_CONTROL_SECTIONS_SERVICE, sections);
     const facades: Array<{ dispose: Dispose }> = [];
     const live = <T extends object>(service: string, fallback: T): T => {
       const facade = createLiveOptionalFacade(context.observe<T>(service), fallback);
@@ -197,7 +218,7 @@ const plugin: PluginModule = {
           order: 20,
           icon: SourceControlIcon,
           useBadge: createBadge(),
-          Component: createPanel(tabs, navigation),
+          Component: createPanel(tabs, navigation, sections),
         };
         await scope.effect(() =>
           scope

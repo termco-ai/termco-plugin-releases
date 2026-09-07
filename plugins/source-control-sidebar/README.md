@@ -8,9 +8,11 @@ implementation and tests. The surrounding plugin adapters connect that UI to
 public application capabilities without changing its design or behavior.
 
 The plugin consumes the one application-wide `git.repository` provider and
-provides `source-control.navigation`. A fork can therefore replace the UI and
+provides `source-control.navigation` and the additive
+`source-control.sections` registry. A fork can therefore replace the UI and
 workflow without creating a second Git runtime, while other plugins can open
-the selected repository's history without importing this plugin's source.
+the selected repository's history or contribute a repository-aware section
+without importing this plugin's source.
 
 Copy this directory and replace `source-control-sidebar` to change or replace
 the feature. No implementation is imported from Termco's private source tree.

@@ -37,7 +37,9 @@ export function runCommand(
   cwd: string | undefined,
   timeoutSecs: number | undefined,
   _workspace: WorkspaceEnv,
+  signal?: AbortSignal,
 ): Promise<CommandOutput> {
+  signal?.throwIfAborted();
   const trimmed = command.trim();
   if (!trimmed) return Promise.reject(new Error("empty command"));
   const dir = cwd?.trim() ? cwd.trim() : undefined;
@@ -55,7 +57,7 @@ export function runCommand(
   return new Promise((resolve, reject) => {
     let child;
     try {
-      child = spawn(file, [...prefix, trimmed], { cwd: dir, stdio: ["ignore", "pipe", "pipe"] });
+      child = spawn(file, [...prefix, trimmed], { cwd: dir, stdio: ["ignore", "pipe", "pipe"], detached: process.platform !== "win32" });
     } catch (e) {
       reject(e);
       return;
@@ -66,6 +68,14 @@ export function runCommand(
     const errTotal = { n: 0 };
     let truncated = false;
     let settled = false;
+    let timedOut = false;
+    const terminate = () => {
+      if (settled) return;
+      try {
+        if (process.platform !== "win32" && child.pid) process.kill(-child.pid, "SIGKILL");
+        else child.kill("SIGKILL");
+      } catch { child.kill("SIGKILL"); }
+    };
     child.stdout.on("data", (c: Buffer) => { if (boundedPush(outChunks, outTotal, c)) truncated = true; });
     child.stderr.on("data", (c: Buffer) => { boundedPush(errChunks, errTotal, c); });
 
@@ -73,6 +83,7 @@ export function runCommand(
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", terminate);
       resolve({
         stdout: Buffer.concat(outChunks).toString("utf8"),
         stderr: Buffer.concat(errChunks).toString("utf8"),
@@ -83,16 +94,19 @@ export function runCommand(
     };
 
     const timer = setTimeout(() => {
-      child.kill("SIGKILL");
-      finish(null, true);
+      timedOut = true;
+      terminate();
     }, durMs);
 
     child.on("error", (e) => {
       if (settled) return;
       settled = true;
       clearTimeout(timer);
+      signal?.removeEventListener("abort", terminate);
       reject(e);
     });
-    child.on("close", (code) => finish(code, false));
+    child.on("close", (code) => finish(code, timedOut));
+    signal?.addEventListener("abort", terminate, { once: true });
+    if (signal?.aborted) terminate();
   });
 }

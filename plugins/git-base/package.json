@@ -6,6 +6,7 @@
   "exports": "./src/index.ts",
   "dependencies": {
     "@termco/kernel": "1.0.0",
-    "@termco/workspace-base": "1.0.0"
+    "@termco/workspace-base": "1.0.0",
+    "react": "^19.2.7"
   }
 }

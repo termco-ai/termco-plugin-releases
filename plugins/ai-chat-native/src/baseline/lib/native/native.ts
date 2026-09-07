@@ -68,10 +68,10 @@ export const native = {
       "ai-chat-native",
     );
   },
-  readFile(path: string, options?: { optional?: boolean }): Promise<ReadResult> {
+  readFile(path: string, options?: { optional?: boolean; workspace?: WorkspaceEnv }): Promise<ReadResult> {
     return selectedFiles().readFile(
       path,
-      currentWorkspace(),
+      options && "workspace" in options ? options.workspace : currentWorkspace(),
       options?.optional,
     ) as Promise<ReadResult>;
   },

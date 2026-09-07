@@ -163,7 +163,7 @@ function callIdentitySignature(
   });
 }
 
-async function invokeToolBody(input: AiToolExecutionInput, timeoutMs: number): Promise<unknown> {
+async function invokeToolBody(input: AiToolExecutionInput, timeoutMs: number, trackBody: (body: Promise<unknown>) => void): Promise<unknown> {
   const controller = new AbortController();
   const abortFromParent = () => {
     if (!controller.signal.aborted) {
@@ -181,7 +181,6 @@ async function invokeToolBody(input: AiToolExecutionInput, timeoutMs: number): P
     : undefined;
   try {
     if (controller.signal.aborted) throw controller.signal.reason;
-    const body = Promise.resolve(input.definition.execute(input.input));
     const aborted = new Promise<never>((_resolve, reject) => {
       controller.signal.addEventListener(
         "abort",
@@ -189,6 +188,11 @@ async function invokeToolBody(input: AiToolExecutionInput, timeoutMs: number): P
         { once: true },
       );
     });
+    const body = Promise.resolve().then(() => {
+      controller.signal.throwIfAborted();
+      return input.definition.execute(input.input, { signal: controller.signal });
+    });
+    trackBody(body);
     return await Promise.race([body, aborted]);
   } finally {
     if (timeout !== undefined) clearTimeout(timeout);
@@ -721,6 +725,8 @@ export function createAiToolExecutor(dependencies: {
             async () => undefined,
           );
         }
+        let bodySettled: Promise<void> | undefined;
+        let bodyFinished = true;
         return registration.scheduler.execute(
           registration.order,
           async () => {
@@ -754,7 +760,10 @@ export function createAiToolExecutor(dependencies: {
               };
             } else {
               try {
-                const output = await invokeToolBody(input, dependencies.toolTimeoutMs ?? 120_000);
+                const output = await invokeToolBody(input, dependencies.toolTimeoutMs ?? 120_000, (body) => {
+                  bodyFinished = false;
+                  bodySettled = body.then(() => { bodyFinished = true; }, () => { bodyFinished = true; });
+                });
                 const canonicalOutput = jsonValue(output);
                 result = {
                   ok: true,
@@ -764,10 +773,10 @@ export function createAiToolExecutor(dependencies: {
                 };
               } catch (cause) {
                 const aborted = input.signal?.aborted;
-                const error = structuredError(
-                  cause,
-                  aborted ? "CANCELLED" : "TOOL_THREW",
-                );
+                const error: AiToolExecutionError = {
+                  ...structuredError(cause, aborted ? "CANCELLED" : "TOOL_THREW"),
+                  ...(!bodyFinished ? { executionState: "stopping" as const } : {}),
+                };
                 const canonicalOutput = jsonValue({ ok: false, error });
                 result = {
                   ok: false,
@@ -780,6 +789,7 @@ export function createAiToolExecutor(dependencies: {
             return result;
           },
           (terminal) => storeResult(input, terminal, startedAt),
+          () => bodySettled,
         );
       })();
       const record = { callSignature, result: execution };

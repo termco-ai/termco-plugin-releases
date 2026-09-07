@@ -232,8 +232,8 @@ function prepareFishConfD(): void {
  * Spawn spec for an SSH workspace terminal: run the `ssh` client locally under
  * node-pty and let **sshd allocate the remote PTY** (`-tt`) — a real remote
  * terminal with the entire renderer/DaFilter/AgentDetector byte pipeline reused
- * unchanged. Auth is interactive (no BatchMode) so a key passphrase/password
- * prompt shows up right in the terminal. When the rig has a remote root we
+ * unchanged. The SSH provider supplies askpass so credentials entered in the
+ * Termco dialog are reused for the terminal. When the rig has a remote root we
  * `cd` into it before the remote login shell.
  *
  * (Remote OSC-133 block integration + a server-owned persistent pty host are a
@@ -252,7 +252,7 @@ export function buildSshSpawn(
   prep?: SshSpawnPrep,
 ): SpawnSpec {
   const dest = target.user ? `${target.user}@${target.host}` : target.host;
-  const args = ["-tt", "-o", "ConnectTimeout=15", "-o", "ServerAliveInterval=30"];
+  const args = ["-tt", "-o", "BatchMode=no", "-o", "ConnectTimeout=15", "-o", "ServerAliveInterval=30"];
   if (target.port) args.push("-p", String(target.port));
   args.push(dest);
 

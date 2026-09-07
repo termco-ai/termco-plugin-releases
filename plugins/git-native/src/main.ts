@@ -10,11 +10,7 @@ import { WORKSPACE_FILES_SERVICE } from "@termco/files-base";
 import { WORKSPACE_EXECUTION_SERVICE, WORKSPACE_REGISTRY_SERVICE } from "@termco/workspace-base";
 
 const plugin: PluginModule = {
-  inject: [
-    WORKSPACE_REGISTRY_SERVICE,
-    WORKSPACE_EXECUTION_SERVICE,
-    WORKSPACE_FILES_SERVICE,
-  ],
+  inject: [WORKSPACE_REGISTRY_SERVICE, WORKSPACE_EXECUTION_SERVICE, WORKSPACE_FILES_SERVICE],
   async activate(context) {
     await context.effect(() =>
       configureGitRuntime({
@@ -47,6 +43,7 @@ const plugin: PluginModule = {
       listBranches: operations.listBranches,
       checkoutBranch: operations.checkoutBranch,
       remoteUrl: operations.remoteUrl,
+      prepareReviewWorktree: operations.prepareReviewWorktree,
     };
     context.provide("git.repository", capability);
   },

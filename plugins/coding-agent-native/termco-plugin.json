@@ -4,8 +4,11 @@
   "name": "Coding Agent Sessions",
   "description": "Owns application-wide Claude Code and Codex process supervision, normalized streaming, approvals, history, checkpoints, remote execution, persistence, and cleanup.",
   "category": "Agent providers",
-  "version": "1.0.2",
-  "entrypoints": { "main": "src/main.ts", "renderer": "ui/plugin.tsx" },
+  "version": "1.0.3",
+  "entrypoints": {
+    "main": "src/main.ts",
+    "renderer": "ui/plugin.tsx"
+  },
   "dependencies": {
     "@hugeicons/core-free-icons": "^4.2.0",
     "@hugeicons/react": "^1.1.7",

@@ -42,7 +42,13 @@ const OVERFLOW_NOTICE = new TextEncoder().encode(
 
 type Sender = (message: unknown) => void;
 
+export interface SshProcessAuthentication {
+  env: NodeJS.ProcessEnv;
+  close(): void;
+}
+
 interface Session {
+  sshAuth?: SshProcessAuthentication;
   id: number;
   pty: IPty;
   shellPid: number;
@@ -54,9 +60,17 @@ interface Session {
   flushTimer: ReturnType<typeof setTimeout> | null;
   droppedBytes: number;
   exited: boolean;
+  callbacksDetached: boolean;
+  closeTimers: ReturnType<typeof setTimeout>[];
+  exitPromise: Promise<void>;
+  resolveExit: () => void;
 }
 
 const sessions = new Map<number, Session>();
+// A session leaves the active map as soon as close() is requested, but its
+// node-pty/N-API exit callback can arrive later. Keep that native lifetime
+// visible to application shutdown until the callback has actually run.
+const pendingNativeExits = new Set<Promise<void>>();
 let nextId = 1; // never 0 — the frontend treats 0 as "unset".
 
 export interface OpenParams {
@@ -68,9 +82,11 @@ export interface OpenParams {
   workspace?: WorkspaceEnv | null;
   /** Resolved remote shell-integration (uploaded by pty_open before spawn). */
   sshPrep?: SshSpawnPrep | null;
+  sshAuth?: SshProcessAuthentication;
 }
 
 export function open(params: OpenParams, onData: Sender, onExit: Sender): number {
+  const sessionDependencies = deps();
   const ws = params.workspace;
   let spec;
   if (ws && ws.kind === "ssh") {
@@ -87,19 +103,31 @@ export function open(params: OpenParams, onData: Sender, onExit: Sender): number
       }
     }
   }
-  const pty = ptySpawn(spec.file, spec.args, {
-    name: "xterm-256color",
-    cols: params.cols,
-    rows: params.rows,
-    cwd: spec.cwd,
-    env: spec.env,
-  });
+  let pty: IPty;
+  try {
+    pty = ptySpawn(spec.file, spec.args, {
+      name: "xterm-256color",
+      cols: params.cols,
+      rows: params.rows,
+      cwd: spec.cwd,
+      env: { ...spec.env, ...params.sshAuth?.env, TERM: spec.env.TERM, COLORTERM: spec.env.COLORTERM },
+    });
+  } catch (error) {
+    params.sshAuth?.close();
+    throw error;
+  }
 
   const id = nextId++;
   if (process.env.TERMCO_PTY_DEBUG) {
     console.log(`[pty] open id=${id} pid=${pty.pid} file=${spec.file} args=${JSON.stringify(spec.args)}`);
   }
+  let resolveExit = () => {};
+  const exitPromise = new Promise<void>((resolve) => {
+    resolveExit = resolve;
+  });
+  pendingNativeExits.add(exitPromise);
   const session: Session = {
+    sshAuth: params.sshAuth,
     id,
     pty,
     shellPid: pty.pid,
@@ -111,17 +139,22 @@ export function open(params: OpenParams, onData: Sender, onExit: Sender): number
     flushTimer: null,
     droppedBytes: 0,
     exited: false,
+    callbacksDetached: false,
+    closeTimers: [],
+    exitPromise,
+    resolveExit,
   };
   sessions.set(id, session);
 
   pty.onData((data) => {
+    if (session.callbacksDetached) return;
     // node-pty decodes to a UTF-8 string; re-encode to the original bytes so the
     // ghostty VT parser sees raw bytes.
     const bytes = new TextEncoder().encode(data);
     // Classify agent lifecycle from the raw stream (before DA filtering), and
     // broadcast termco:agent-signal.
     session.agentDetect.process(bytes, (t) =>
-      deps().events.emit("termco:agent-signal", intoSignal(t, session.id)),
+      sessionDependencies.events.emit("termco:agent-signal", intoSignal(t, session.id)),
     );
     const filtered: number[] = [];
     session.daFilter.process(bytes, filtered, (reply) => {
@@ -139,13 +172,21 @@ export function open(params: OpenParams, onData: Sender, onExit: Sender): number
   });
 
   pty.onExit(({ exitCode }) => {
-    session.exited = true;
-    session.agentDetect.finish((t) =>
-      deps().events.emit("termco:agent-signal", intoSignal(t, session.id)),
-    );
-    flush(session);
-    session.onExit(exitCode);
-    sessions.delete(id);
+    try {
+      session.exited = true;
+      if (session.callbacksDetached) return;
+      session.agentDetect.finish((t) =>
+        sessionDependencies.events.emit("termco:agent-signal", intoSignal(t, session.id)),
+      );
+      flush(session);
+      session.onExit(exitCode);
+    } finally {
+      session.sshAuth?.close();
+      for (const timer of session.closeTimers) clearTimeout(timer);
+      sessions.delete(id);
+      pendingNativeExits.delete(session.exitPromise);
+      session.resolveExit();
+    }
   });
 
   return id;
@@ -190,6 +231,21 @@ export function close(id: number): void {
   const session = sessions.get(id);
   if (!session) return;
   sessions.delete(id);
+  session.sshAuth?.close();
+  // Retain the native handle through graceful shutdown and escalation, even
+  // though this terminal is no longer writable through the active session map.
+  session.closeTimers.push(setTimeout(() => {
+    if (session.exited) return;
+    try { session.pty.kill("SIGKILL"); } catch { /* already exited */ }
+  }, 500));
+  session.closeTimers.push(setTimeout(() => {
+    // A broken native callback must not prevent quitting forever. Callbacks
+    // are detached from provider services so a late exit is safe after disposal.
+    session.callbacksDetached = true;
+    if (session.flushTimer) clearTimeout(session.flushTimer);
+    pendingNativeExits.delete(session.exitPromise);
+    session.resolveExit();
+  }, 2_000));
   // Windows: ConPTY doesn't reap the child tree; force-kill it via taskkill /T.
   // Fire-and-forget async — a sync fork here would stall the main thread per
   // closed tab, and pty.kill() below doesn't depend on it.
@@ -212,6 +268,14 @@ export function close(id: number): void {
 export function closeAll(): number {
   const count = sessions.size;
   for (const id of [...sessions.keys()]) close(id);
+  return count;
+}
+
+/** Close every PTY, escalate ignored termination, and await native cleanup.
+ * A missing native callback is bounded by close()'s final deadline. */
+export async function closeAllAndWait(): Promise<number> {
+  const count = closeAll();
+  await Promise.all([...pendingNativeExits]);
   return count;
 }
 

@@ -27,6 +27,7 @@ export const CORE_SESSION_EVENT_TYPES = [
   "session/pin",
   "session/label",
   "session/rig",
+  "session/workspace",
   "turn/start",
   "turn/suspend",
   "turn/resume",
@@ -334,6 +335,10 @@ function validateCoreData(type: string, value: unknown, path: string): void {
     case "session/label":
       stringValue(data.label, `${path}.label`);
       oneOf(data.operation, ["add", "remove"], `${path}.operation`);
+      break;
+    case "session/workspace":
+      if (data.rootPath !== null) stringValue(data.rootPath, `${path}.rootPath`);
+      oneOf(data.source, ["user", "tool"], `${path}.source`);
       break;
     case "session/rig":
       if (data.rigId !== null) stringValue(data.rigId, `${path}.rigId`);

@@ -110,6 +110,9 @@ export function createManagedAgentContribution(): AiToolContribution {
     id: "managed-agent",
     group: "agents",
     order: 180,
+    discovery: {
+      summary: "Start and collaborate with a visible managed coding-agent session in its own tab.",
+    },
     build: (runtime) => createManagedAgentTools(runtime),
   };
 }
