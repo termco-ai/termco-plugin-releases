@@ -71,6 +71,7 @@ export async function createLibrary(
         workspace: import("@termco/workspace-base").WorkspaceEnv,
         refresh?: boolean,
       ) => Promise<import("@termco/ai-library-base").AiLibraryDiscoveryResult>),
+  mcpSources?: AiLibrarySourceRegistry,
 ): Promise<{
   capability: AiLibraryCapability;
   dispose: () => Promise<void>;
@@ -124,17 +125,25 @@ export async function createLibrary(
     for (const event of LEGACY_EVENTS) events.emit(event, null);
   };
 
+  const selectedMcpSource = () => mcpSources
+    ? mcpSources.snapshot().find((source) => source.kind === "mcp")?.capability
+    : mcp;
+  let mcpSource = selectedMcpSource();
+  let mcpGeneration = 0;
+
   const connect = async (server: AiLibraryMcpServer) => {
     if (disposed) return;
+    const client = mcpSource ?? mcp;
+    const generation = mcpGeneration;
     state.mcpStatus[server.name] = {
       connecting: true,
       connected: false,
       tools: state.mcpStatus[server.name]?.tools ?? [],
     };
     publish();
-    const result = await mcp.connect(server);
-    if (disposed) {
-      if (!("error" in result)) mcp.disconnect(server.name);
+    const result = await client.connect(server);
+    if (disposed || generation !== mcpGeneration) {
+      if (!("error" in result)) client.disconnect(server.name);
       return;
     }
     if (!("error" in result)) ownedConnections.add(server.name);
@@ -321,15 +330,34 @@ export async function createLibrary(
     },
   };
 
-  const disabled = new Set(state.disabledUserMcpServers);
-  for (const server of state.userMcpServers) {
-    if (!disabled.has(server.name)) void connect(server);
-  }
+  const connectSavedServers = () => {
+    if (!mcpSource || disposed) return;
+    const disabled = new Set(state.disabledUserMcpServers);
+    for (const server of state.userMcpServers) {
+      if (!disabled.has(server.name)) void connect(server);
+    }
+  };
+  // Optional sources activate after this library. Reconcile when the actual
+  // MCP provider changes, without reconnecting for unrelated file sources.
+  const offSources = mcpSources?.subscribe(() => {
+    const next = selectedMcpSource();
+    if (next === mcpSource) return;
+    const previous = mcpSource;
+    mcpSource = next;
+    mcpGeneration += 1;
+    for (const name of ownedConnections) previous?.disconnect(name);
+    ownedConnections.clear();
+    state.mcpStatus = {};
+    publish();
+    connectSavedServers();
+  });
+  connectSavedServers();
 
   return {
     capability,
     async dispose() {
       disposed = true;
+      offSources?.();
       const failures: unknown[] = [];
       try {
         offOauth();
@@ -370,6 +398,7 @@ const plugin: PluginModule = {
       sources.mcp,
       context.get<ApplicationEventsCapability>(EVENTS_APPLICATION_SERVICE),
       sources.discover,
+      sourceRegistry,
     );
     await context.effect(() => library.dispose);
     context.provide<AiLibraryCapability>(AI_LIBRARY_SERVICE, library.capability);

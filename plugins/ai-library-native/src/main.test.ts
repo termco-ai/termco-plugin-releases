@@ -1,9 +1,13 @@
+import type { AiLibrarySourceRegistry } from "@termco/ai-library-base";
 import type { ApplicationEventsCapability } from "@termco/events-base";
 import type { WorkspaceFilesCapability } from "@termco/files-base";
 import type { McpClientsCapability } from "@termco/mcp-base";
 import type { StorageCapability, StorageHandle } from "@termco/storage-base";
 import { describe, expect, it, vi } from "vitest";
-import { createLibrary } from "./main";
+import { CapabilityRuntime, type PluginModule } from "@termco/kernel";
+import manifest from "../termco-plugin.json";
+import plugin, { createLibrary } from "./main";
+import { createAiLibrarySources } from "./sources";
 
 function harness() {
   const files = new Map<string, Map<string, unknown>>();
@@ -96,4 +100,69 @@ describe("ai.library capability", () => {
 
     dispose();
   });
+});
+
+
+it.each([true, false])("connects saved MCP servers when the provider is ready (available at startup: %s)", async (availableAtStartup) => {
+  const h = harness();
+  const server = { name: "Telecontext", url: "https://example.test/mcp" };
+    const disabledServer = { name: "Disabled", command: "disabled-mcp" };
+  h.files.set("termco-ai-mcp.json", new Map<string, unknown>([
+    ["userServers", [server, disabledServer]],
+    ["userDisabled", [disabledServer.name]],
+  ]));
+  const mcpPlugin: PluginModule = { activate(context) { context.provide("mcp.clients", h.mcp); } };
+  const runtime = new CapabilityRuntime({
+    profileId: "test",
+    plugins: [manifest, {...manifest, id: "test-mcp"}].map((entry) => ({ id: entry.id, manifest: entry, source: { type: "local", module: entry.id, location: entry.id, integrity: entry.id } })),
+    activationOrder: [manifest.id, "test-mcp"],
+  } as ConstructorParameters<typeof CapabilityRuntime>[0]);
+  runtime.installExternalCapability("storage.application", "test-storage", h.storage);
+  try {
+    if (availableAtStartup) await runtime.activate("test-mcp", mcpPlugin);
+    await runtime.activate(manifest.id, plugin);
+    if (!availableAtStartup) {
+      expect(h.mcp.connect).not.toHaveBeenCalled();
+      expect(await runtime.callCapability("ai.library", "snapshot", [])).toMatchObject({mcpStatus: {}});
+      await runtime.activate("test-mcp", mcpPlugin);
+    }
+    await vi.waitFor(() => expect(h.mcp.connect).toHaveBeenCalledWith(server));
+    const state = await runtime.callCapability("ai.library", "snapshot", []);
+    expect(state).toMatchObject({mcpStatus: {Telecontext: {connected: true}}});
+    expect(h.mcp.connect).toHaveBeenCalledTimes(1);
+    const registry = runtime.platformCapability<AiLibrarySourceRegistry>("ai.library.sources");
+    const removeFiles = registry.register({id: "test-files", kind: "workspace-files", capability: h.workspaceFiles});
+    removeFiles();
+    expect(h.mcp.connect).toHaveBeenCalledTimes(1);
+    await runtime.deactivate("test-mcp");
+    expect(h.mcp.disconnect).toHaveBeenCalledWith(server.name);
+    await runtime.activate("test-mcp", mcpPlugin);
+    await vi.waitFor(() => expect(h.mcp.connect).toHaveBeenCalledTimes(2));
+    expect(h.mcp.connect).not.toHaveBeenCalledWith(disabledServer);
+  } finally {
+    await runtime.disposeAll();
+  }
+});
+
+
+it("ignores a connection result from a removed MCP source", async () => {
+  const h = harness();
+  const server = {name: "Saved", command: "saved-mcp"};
+  h.files.set("termco-ai-mcp.json", new Map([["userServers", [server]]]));
+  let finish!: (result: Awaited<ReturnType<McpClientsCapability["connect"]>>) => void;
+  vi.mocked(h.mcp.connect).mockImplementation(() => new Promise(resolve => { finish = resolve; }));
+  const sources = createAiLibrarySources();
+  const remove = sources.registry.register({id: "old", kind: "mcp", capability: h.mcp});
+  const library = await createLibrary(h.storage, sources.mcp, h.events, h.workspaceFiles, sources.registry);
+  try {
+    remove();
+    const replacement = harness().mcp;
+    sources.registry.register({id: "new", kind: "mcp", capability: replacement});
+    await vi.waitFor(async () => expect((await library.capability.snapshot()).mcpStatus.Saved.connected).toBe(true));
+    finish({ok: true, tools: [{name: "stale", inputSchema: {}}]});
+    await vi.waitFor(() => expect(h.mcp.disconnect).toHaveBeenCalledWith(server.name));
+    expect((await library.capability.snapshot()).mcpStatus.Saved.tools).toEqual([{name: "read", inputSchema: {}}]);
+  } finally {
+    await library.dispose();
+  }
 });
