@@ -21,7 +21,12 @@ async function setup() {
   return secrets;
 }
 function ask(session: ReturnType<SshAuthentication["open"]>, prompt = "user@host's password:") {
-  const child = spawn(session.env.SSH_ASKPASS!, [prompt], { env: session.env });
+  const command = session.env.SSH_ASKPASS!;
+  // Mirrors native Windows OpenSSH's executable-and-arguments launch.
+  const windows = command.match(/^"([^"]+)" "([^"]+)"$/);
+  const child = windows
+    ? spawn(windows[1]!, [windows[2]!, prompt], { env: session.env })
+    : spawn(command, [prompt], { env: session.env });
   let stdout = "";
   child.stdout.on("data", (data) => {
     stdout += data;
@@ -38,6 +43,17 @@ async function prompt() {
 }
 
 describe("OpenSSH askpass bridge", () => {
+  it("launches the Node helper directly for native Windows OpenSSH", async () => {
+    await setup();
+    auth.dispose();
+    const secrets = { get: vi.fn(async () => null), set: vi.fn(async () => {}), delete: vi.fn(async () => {}), getAll: vi.fn(async () => []) };
+    auth = await createSshAuthentication({ secrets, changed: vi.fn(), executable: "C:\\Program Files\\Termco\\Termco.exe", platform: "win32" });
+    const session = auth.open(target);
+    expect(session.env.SSH_ASKPASS).toMatch(/^"C:\\Program Files\\Termco\\Termco.exe" ".*askpass\.cjs"$/);
+    expect(session.env.ELECTRON_RUN_AS_NODE).toBe("1");
+    session.close();
+  });
+
   it("rejects helpers without the per-process token", async () => {
     const secrets = await setup();
     const session = auth.open(target);

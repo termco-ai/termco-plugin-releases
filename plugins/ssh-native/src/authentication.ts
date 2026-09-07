@@ -31,6 +31,7 @@ export async function createSshAuthentication(input: {
   secrets: SecretsCapability;
   changed(): void;
   executable?: string;
+  platform?: NodeJS.Platform;
 }) {
   const sessions = new Map<string, Session>();
   const pending = new Map<string, Pending>();
@@ -40,14 +41,16 @@ export async function createSshAuthentication(input: {
   const helper = pluginAssetPath("askpass.cjs");
   const executable = input.executable ?? process.execPath;
   const quote = (value: string) => `'${value.replaceAll("'", "'\\''")}'`;
-  const launcher = join(directory, process.platform === "win32" ? "askpass.cmd" : "askpass");
-  writeFileSync(
-    launcher,
-    process.platform === "win32"
-      ? `@echo off\r\nset ELECTRON_RUN_AS_NODE=1\r\n"${executable}" "${helper}" %*\r\n`
-      : `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${quote(executable)} ${quote(helper)} "$@"\n`,
-    { mode: 0o700 },
-  );
+  const windows = (input.platform ?? process.platform) === "win32";
+  // Native Windows OpenSSH accepts an executable plus arguments in ASKPASS.
+  // It uses CreateProcess directly, so a .cmd file cannot be the executable.
+  const launcher = windows ? `"${executable}" "${helper}"` : join(directory, "askpass");
+  if (!windows) {
+    writeFileSync(launcher,
+      `#!/bin/sh\nELECTRON_RUN_AS_NODE=1 exec ${quote(executable)} ${quote(helper)} "$@"\n`,
+      { mode: 0o700 },
+    );
+  }
 
   async function request(session: Session, message: string, hint: string): Promise<string | null> {
     if (disposed || session.cancelled) return null;
@@ -212,6 +215,7 @@ export async function createSshAuthentication(input: {
         env: {
           ...process.env,
           LC_ALL: "C",
+          ...(windows ? { ELECTRON_RUN_AS_NODE: "1" } : {}),
           SSH_ASKPASS: launcher,
           SSH_ASKPASS_REQUIRE: "force",
           TERMCO_ASKPASS_PORT: String(port),
