@@ -48,6 +48,7 @@ export function ExactHeader({
       activeId={runtime.activeTabId}
       onSelect={runtime.selectTab}
       onSplit={runtime.splitTab}
+      onNewTerminalBelow={runtime.newTerminalBelow}
       onNew={runtime.newTab}
       onNewBlock={runtime.newBlockTab}
       onNewPrivate={runtime.newPrivateTab}

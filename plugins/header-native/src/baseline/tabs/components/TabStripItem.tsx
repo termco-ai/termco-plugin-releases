@@ -27,6 +27,8 @@ import {
   PinIcon,
   PlusSignIcon,
   SidebarRight01Icon,
+  LayoutTwoRowIcon,
+  TerminalIcon,
 } from "@hugeicons/core-free-icons";
 import { HugeiconsIcon } from "@hugeicons/react";
 import {
@@ -37,7 +39,7 @@ import {
 } from "react";
 import type { DragState } from "../lib/dragState";
 import { labelFor } from "../../types";
-import { isOverSplitZone, useSplitDrag } from "../lib/useSplitDrag";
+import { dockLayout, getSnapTarget, useSplitDrag } from "../lib/useSplitDrag";
 import type { BulkCloseMode, EditorTab, Tab } from "../../types";
 import { DropIndicator } from "./DropIndicator";
 import { TabIcon } from "./TabIcon";
@@ -72,7 +74,8 @@ type TabStripItemProps = {
   onRename: (id: number, title: string) => void;
   onReorder: (fromId: number, toGapIndex: number) => void;
   /** Open this tab in a split beside the current one (context menu / drag-to-edge). */
-  onSplit?: (id: number) => void;
+  onSplit?: (id: number, direction?: "horizontal" | "vertical", placement?: "before" | "after") => void;
+  onNewTerminalBelow?: (id: number) => void;
   onOverrideLanguage?: (id: number, lang: string | null) => void;
 };
 
@@ -105,6 +108,7 @@ export function TabStripItem({
   onRename,
   onReorder,
   onSplit,
+  onNewTerminalBelow,
   onOverrideLanguage,
 }: TabStripItemProps) {
   const isPreview = t.kind === "editor" && (t as EditorTab).preview;
@@ -156,6 +160,7 @@ export function TabStripItem({
         dragRef.current = {
           pointerId: e.pointerId,
           startX: e.clientX,
+          startY: e.clientY,
           fromId: t.id,
           active: false,
         };
@@ -165,34 +170,30 @@ export function TabStripItem({
         const st = dragRef.current;
         if (!st || st.pointerId !== e.pointerId) return;
         if (!st.active) {
-          if (Math.abs(e.clientX - st.startX) < 4) return;
+          if (Math.hypot(e.clientX - st.startX, e.clientY - (st.startY ?? e.clientY)) < 4) return;
           st.active = true;
           setDraggingId(st.fromId);
           document.body.style.userSelect = "none";
         }
         e.preventDefault();
         setDropGap(gapAtX(e.clientX));
-        // Light up the workspace's split drop-zone only while hovering it.
         if (onSplit) {
-          const over = isOverSplitZone(e.clientX, e.clientY);
-          if (over !== useSplitDrag.getState().overSplit) {
-            useSplitDrag.getState().setOverSplit(over);
-          }
+          useSplitDrag.getState().setTarget(getSnapTarget(e.clientX, e.clientY));
         }
       }}
       onPointerUp={(e) => {
         const st = dragRef.current;
         if (st?.active) {
-          // Dropped over the workspace's right half → open in a split.
-          if (onSplit && isOverSplitZone(e.clientX, e.clientY)) {
-            onSplit(st.fromId);
-          } else if (dropGap !== null) {
+          const target = onSplit ? getSnapTarget(e.clientX, e.clientY) : null;
+          if (onSplit && target && target !== "center") {
+            onSplit(st.fromId, ...dockLayout(target));
+          } else if (!target && dropGap !== null) {
             onReorder(st.fromId, dropGap);
           }
         } else if (st && !st.active) {
           onSelect(t.id);
         }
-        useSplitDrag.getState().setOverSplit(false);
+        useSplitDrag.getState().setTarget(null);
         endDrag(e.currentTarget);
       }}
       onPointerCancel={(e) => endDrag(e.currentTarget)}
@@ -316,6 +317,18 @@ export function TabStripItem({
           <ContextMenuItem className={itemClass} onSelect={() => onSplit(t.id)}>
             {iconEl(SidebarRight01Icon)}
             <span className="flex-1">Open to the Side</span>
+          </ContextMenuItem>
+        )}
+        {onSplit && (
+          <ContextMenuItem className={itemClass} onSelect={() => onSplit(t.id, "vertical")}>
+            {iconEl(LayoutTwoRowIcon)}
+            <span className="flex-1">Open Below</span>
+          </ContextMenuItem>
+        )}
+        {onNewTerminalBelow && (t.kind === "editor" || t.kind === "markdown") && (
+          <ContextMenuItem className={itemClass} onSelect={() => onNewTerminalBelow(t.id)}>
+            {iconEl(TerminalIcon)}
+            <span className="flex-1">Open Terminal Below</span>
           </ContextMenuItem>
         )}
         {canDuplicate && (

@@ -6,6 +6,7 @@
 export type DragState = {
   pointerId: number;
   startX: number;
+  startY?: number;
   fromId: number;
   active: boolean;
 };

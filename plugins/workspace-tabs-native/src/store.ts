@@ -21,6 +21,8 @@ function cloneLayout(layout: WorkspaceRigTabLayout): WorkspaceRigTabLayout {
     tabs: layout.tabs.map(cloneSavedTab),
     activeTabIndex: layout.activeTabIndex,
     splitTabIndex: layout.splitTabIndex,
+    ...(layout.splitDirection ? { splitDirection: layout.splitDirection } : {}),
+    ...(layout.splitPlacement ? { splitPlacement: layout.splitPlacement } : {}),
   };
 }
 
@@ -38,7 +40,10 @@ function validLayout(value: unknown): value is WorkspaceRigTabLayout {
         typeof (tab as Partial<WorkspaceSavedTab>).kind === "string",
     ) &&
     Number.isSafeInteger(layout.activeTabIndex) &&
-    Number.isSafeInteger(layout.splitTabIndex)
+    Number.isSafeInteger(layout.splitTabIndex) &&
+    (layout.splitDirection === undefined ||
+      layout.splitDirection === "horizontal" || layout.splitDirection === "vertical") &&
+    (layout.splitPlacement === undefined || layout.splitPlacement === "before" || layout.splitPlacement === "after")
   );
 }
 
@@ -71,6 +76,8 @@ export class WorkspaceTabsStore implements WorkspaceTabsCapability {
     activeId: 0,
     splitTabId: 0,
     focusedPane: "left",
+    splitDirection: "horizontal",
+    splitPlacement: "after",
     booted: false,
     activeRigIdForNewTabs: "default",
     activeTabByRig: {},
@@ -287,6 +294,15 @@ export class WorkspaceTabsStore implements WorkspaceTabsCapability {
     let splitTabId = next.splitTabId ?? this.#snapshot.splitTabId;
     let focusedPane = next.focusedPane ?? this.#snapshot.focusedPane;
     const booted = next.booted ?? this.#snapshot.booted;
+    const splitDirection = next.splitDirection ?? this.#snapshot.splitDirection ?? "horizontal";
+    if (splitDirection !== "horizontal" && splitDirection !== "vertical") {
+      throw new Error(`Invalid workspace split direction: ${splitDirection}`);
+    }
+
+    const splitPlacement = next.splitPlacement ?? this.#snapshot.splitPlacement ?? "after";
+    if (splitPlacement !== "before" && splitPlacement !== "after") {
+      throw new Error(`Invalid workspace split placement: ${splitPlacement}`);
+    }
 
     if (activeId !== 0 && !tabs.some((tab) => tab.id === activeId)) activeId = 0;
     if (splitTabId !== 0 && !tabs.some((tab) => tab.id === splitTabId)) splitTabId = 0;
@@ -297,9 +313,9 @@ export class WorkspaceTabsStore implements WorkspaceTabsCapability {
       throw new Error(`Invalid focused workspace pane: ${focusedPane}`);
     }
     if (splitTabId === 0) focusedPane = "left";
-    if (booted && activeId !== 0) {
+    if (booted && (activeId !== 0 || splitTabId !== 0)) {
       tabs = tabs.map((tab) =>
-        tab.id === activeId && tab.cold ? { ...tab, cold: false } : tab,
+        (tab.id === activeId || tab.id === splitTabId) && tab.cold ? { ...tab, cold: false } : tab,
       );
     }
 
@@ -322,6 +338,8 @@ export class WorkspaceTabsStore implements WorkspaceTabsCapability {
       activeId,
       splitTabId,
       focusedPane,
+      splitDirection,
+      splitPlacement,
       booted,
       activeRigIdForNewTabs:
         next.activeRigIdForNewTabs ?? this.#snapshot.activeRigIdForNewTabs,

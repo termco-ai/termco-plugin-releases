@@ -76,6 +76,39 @@ const terminal = (id: number, cwd = "/repo"): WorkspaceTabRecord => ({
 });
 
 describe("workspace.tab-actions", () => {
+  it.each([
+    ["/repo/src/app.ts", "/repo/src"],
+    ["/app.ts", "/"],
+    ["C:\\repo\\app.ts", "C:\\repo"],
+    ["C:\\app.ts", "C:\\"],
+  ])("opens a terminal below %s in its directory without losing edits", (path, cwd) => {
+    const file: WorkspaceTabRecord = { id: 2, rigId: "rig-a", kind: "editor",
+      title: "app.ts", data: { path, dirty: true, preview: true, content: "unsaved" } };
+    const s = setup([terminal(1), file]);
+    s.tabs.transition({ activeId: 1, splitTabId: 2, focusedPane: "right" });
+    vi.mocked(s.tabs.transition).mockClear();
+    const id = s.actions.newTerminalBelow!(2);
+    expect(s.tabs.transition).toHaveBeenCalledTimes(1);
+    expect(s.tabs.snapshot()).toMatchObject({ activeId: 2, splitTabId: id,
+      splitDirection: "vertical", focusedPane: "right" });
+    expect(s.readTabs().find((tab) => tab.id === 2)?.data).toMatchObject({
+      dirty: true, preview: false, content: "unsaved" });
+    expect(s.readTabs().find((tab) => tab.id === id)).toMatchObject({
+      kind: "terminal", rigId: "rig-a", data: { cwd, paneTree: { kind: "leaf", cwd } } });
+    expect(s.terminalSessions.dispose).not.toHaveBeenCalled();
+  });
+
+  it("opens below Markdown and untitled files, and ignores missing or non-file anchors", () => {
+    const s = setup([terminal(1), { id: 2, rigId: "rig-a", kind: "markdown", title: "README",
+      data: { path: "/repo/README.md" } }, { id: 3, rigId: "rig-a", kind: "editor", title: "Untitled" }]);
+    expect(s.actions.newTerminalBelow!(1)).toBeNull();
+    expect(s.actions.newTerminalBelow!(999)).toBeNull();
+    expect(s.tabs.allocate).not.toHaveBeenCalled();
+    expect(s.actions.newTerminalBelow!(2)).not.toBeNull();
+    const id = s.actions.newTerminalBelow!(3);
+    expect(s.readTabs().find((tab) => tab.id === id)?.data?.cwd).toBeUndefined();
+  });
+
   it("closes safe tabs and disposes every terminal leaf", async () => {
     const s = setup([
       {

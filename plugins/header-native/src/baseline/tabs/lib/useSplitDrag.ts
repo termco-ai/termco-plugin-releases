@@ -1,20 +1,24 @@
-import { WORKSPACE_SURFACE_ATTR } from "@termco/ui-shell-base";
+import { WORKSPACE_SURFACE_ATTR, workspaceSnapTarget, type DockPosition, type SnapTarget } from "@termco/ui-shell-base";
+export { dockLayout, type DockPosition, type SnapTarget } from "@termco/ui-shell-base";
 
-let overSplit = false;
+export const DOCK_POSITIONS: readonly DockPosition[] = ["left", "right", "top", "bottom"];
+export const DOCK_LABELS: Record<DockPosition, string> = {
+  left: "Left", right: "Right", top: "Above", bottom: "Below",
+};
+
+let target: SnapTarget = null;
 const listeners = new Set<() => void>();
 const splitState = {
-  get overSplit() {
-    return overSplit;
-  },
-  setOverSplit(value: boolean) {
-    if (overSplit === value) return;
-    overSplit = value;
+  get target() { return target; },
+  setTarget(value: SnapTarget) {
+    if (target === value) return;
+    target = value;
     for (const listener of listeners) listener();
   },
 };
 
-/** Plugin-local gesture state. The workspace marker is a public DOM layout
- * contract; no private tab store is shared across the boundary. */
+/** Gesture state belongs to the header; the workspace marker is a public
+ * DOM contract, so the header never imports the shell's private layout. */
 export const useSplitDrag = {
   getState: () => splitState,
   subscribe(listener: () => void) {
@@ -23,17 +27,8 @@ export const useSplitDrag = {
   },
 };
 
-export function isOverSplitZone(clientX: number, clientY: number): boolean {
-  const element = document.querySelector<HTMLElement>(
-    `[${WORKSPACE_SURFACE_ATTR}]`,
-  );
-  if (!element) return false;
-  const rect = element.getBoundingClientRect();
-  if (rect.width === 0 || rect.height === 0) return false;
-  return (
-    clientY >= rect.top &&
-    clientY <= rect.bottom &&
-    clientX >= rect.left + rect.width * 0.5 &&
-    clientX <= rect.right
-  );
+export function getSnapTarget(clientX: number, clientY: number): SnapTarget {
+  const element = document.querySelector<HTMLElement>(`[${WORKSPACE_SURFACE_ATTR}]`);
+  if (!element) return null;
+  return workspaceSnapTarget(element.getBoundingClientRect(), clientX, clientY);
 }

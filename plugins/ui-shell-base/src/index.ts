@@ -11,10 +11,12 @@ export const UI_PROVIDERS_SERVICE = "ui.providers";
 export const UI_BACKGROUND_TASKS_SERVICE = "ui.background.tasks";
 export const UI_CONTRIBUTION_EVIDENCE_SERVICE = "ui.contribution-evidence";
 
-/** Product-neutral DOM seam used by a tab-strip plugin to locate the shell's
- * workspace surface for drag-to-split feedback. The shell owns the surface;
- * the tab-strip plugin owns every pixel and gesture rendered into it. */
+/** Product-neutral DOM seam locating the shell's workspace surface for tab
+ * docking and dock resizing. The shell owns the bounds; consuming features
+ * own their gestures and feedback. The left edge is after the sidebar. */
 export const WORKSPACE_SURFACE_ATTR = "data-workspace-surface";
+export { dockLayout, workspaceSnapTarget } from "./workspaceDocking";
+export type { DockPosition, SnapTarget } from "./workspaceDocking";
 
 export interface UiContributionRef {
   service: UiContributionCapability;

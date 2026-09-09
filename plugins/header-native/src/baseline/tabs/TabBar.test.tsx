@@ -193,9 +193,60 @@ describe("TabBar", () => {
     fireEvent.pointerMove(tab, { pointerId: 1, clientX: 75, clientY: 50 });
     expect(screen.getByTestId("tab-split-drop-indicator")).toBeTruthy();
     fireEvent.pointerUp(tab, { pointerId: 1, clientX: 75, clientY: 50 });
-    expect(handlers.onSplit).toHaveBeenCalledWith(1);
+    expect(handlers.onSplit).toHaveBeenCalledWith(1, "horizontal", "after");
     expect(screen.queryByTestId("tab-split-drop-indicator")).toBeNull();
     surface.remove();
+  });
+
+  it("docks a terminal below the file when dragged to the bottom edge", () => {
+    const surface = document.createElement("div");
+    surface.setAttribute("data-workspace-surface", "true");
+    surface.getBoundingClientRect = () => ({ left: 0, top: 0, right: 100, bottom: 100,
+      width: 100, height: 100, x: 0, y: 0, toJSON: () => ({}) });
+    document.body.append(surface);
+    try {
+      const { container } = mount(2);
+      const tab = container.querySelector('[data-tab-id="1"]') as HTMLElement;
+      fireEvent.pointerDown(tab, { button: 0, pointerId: 1, clientX: 0, clientY: 0 });
+      fireEvent.pointerMove(tab, { pointerId: 1, clientX: 75, clientY: 95 });
+      fireEvent.pointerUp(tab, { pointerId: 1, clientX: 75, clientY: 95 });
+      expect(handlers.onSplit).toHaveBeenCalledWith(1, "vertical", "after");
+    } finally {
+      surface.remove();
+    }
+  });
+
+  it("offers all four placements through the layout picker", () => {
+    mount(2);
+    for (const [label, direction, placement] of [
+      ["left", "horizontal", "before"], ["right", "horizontal", "after"],
+      ["above", "vertical", "before"], ["below", "vertical", "after"],
+    ]) {
+      fireEvent.click(screen.getByRole("button", { name: "Arrange tabs" }));
+      fireEvent.click(screen.getByRole("button", { name: `Place tab ${label}` }));
+      expect(handlers.onSplit).toHaveBeenLastCalledWith(2, direction, placement);
+    }
+  });
+
+  it("cancels a purely vertical drag on Escape without changing tabs", () => {
+    const surface = document.createElement("div");
+    surface.setAttribute("data-workspace-surface", "true");
+    surface.getBoundingClientRect = () => new DOMRect(0, 0, 100, 100);
+    document.body.append(surface);
+    try {
+      const { container } = mount(2);
+      const tab = container.querySelector('[data-tab-id="1"]') as HTMLElement;
+      fireEvent.pointerDown(tab, { button: 0, pointerId: 1, clientX: 50, clientY: 0 });
+      fireEvent.pointerMove(tab, { pointerId: 1, clientX: 50, clientY: 95 });
+      expect(screen.getByTestId("tab-split-drop-indicator").getAttribute("data-dock-position")).toBe("bottom");
+      fireEvent.keyDown(document, { key: "Escape" });
+      expect(screen.queryByTestId("tab-split-drop-indicator")).toBeNull();
+      fireEvent.pointerUp(tab, { pointerId: 1, clientX: 50, clientY: 95 });
+      expect(handlers.onSplit).not.toHaveBeenCalled();
+      expect(handlers.onSelect).not.toHaveBeenCalled();
+      expect(handlers.onReorder).not.toHaveBeenCalled();
+      expect(document.body.style.userSelect).toBe("");
+    } finally { surface.remove(); }
   });
 
   it("cancelling a drag never commits a reorder", () => {

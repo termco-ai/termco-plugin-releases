@@ -4,7 +4,7 @@
   "name": "Workspace Tab Actions",
   "description": "Owns guarded close, duplicate, rename, and deletion workflows over the selected shared tab provider.",
   "category": "Workspace providers",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "entrypoints": {
     "renderer": "src/renderer.ts"
   },

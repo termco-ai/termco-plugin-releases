@@ -50,6 +50,8 @@ export interface WorkspaceTabActionsCapability {
   close(id: number): Promise<void>;
   closeMany(anchorId: number, mode: WorkspaceTabBulkCloseMode): Promise<void>;
   newRightOf(anchorId: number): number | null;
+  /** Keep a file above a new terminal. Optional for older workflow providers. */
+  newTerminalBelow?(anchorId: number): number | null;
   duplicate(id: number): number | null;
   rename(id: number, title: string): void;
   pathDeleted(path: string): void;

@@ -114,6 +114,40 @@ export function createWorkspaceTabActions(
       dependencies.tabs.transition({ tabs, activeId: tabId });
       return tabId;
     },
+    newTerminalBelow(anchorId) {
+      const current = dependencies.tabs.snapshot();
+      const anchor = current.tabs.find((tab) => tab.id === anchorId);
+      if (!anchor || (anchor.kind !== "editor" && anchor.kind !== "markdown")) return null;
+      const path = typeof anchor.data?.path === "string" ? anchor.data.path : undefined;
+      const cwd = path ? fileDirectory(path) : undefined;
+      const [tabId, leafId] = dependencies.tabs.allocate(2);
+      const terminal: WorkspaceTabRecord = {
+        id: tabId,
+        rigId: anchor.rigId,
+        kind: "terminal",
+        title: "shell",
+        data: {
+          cwd,
+          paneTree: { kind: "leaf", id: leafId, cwd },
+          activeLeafId: leafId,
+        },
+      };
+      const tabs = current.tabs.map((tab) =>
+        tab.id === anchorId && tab.kind === "editor"
+          ? { ...tab, data: { ...tab.data, preview: false } }
+          : tab,
+      );
+      tabs.splice(tabs.findIndex((tab) => tab.id === anchorId) + 1, 0, terminal);
+      dependencies.tabs.transition({
+        tabs,
+        activeId: anchorId,
+        splitTabId: tabId,
+        splitDirection: "vertical",
+        splitPlacement: "after",
+        focusedPane: "right",
+      });
+      return tabId;
+    },
     duplicate(id) {
       const current = dependencies.tabs.snapshot();
       const source = current.tabs.find((tab) => tab.id === id);
@@ -200,6 +234,14 @@ export function createWorkspaceTabActions(
     },
     cancelBulkClose: () => patch({ pendingBulkClose: null }),
   };
+}
+
+function fileDirectory(path: string): string | undefined {
+  const separator = Math.max(path.lastIndexOf("/"), path.lastIndexOf("\\"));
+  if (separator < 0) return undefined;
+  // Preserve POSIX roots and Windows drive roots.
+  return path.slice(0, separator === 0 || (separator === 2 && path[1] === ":")
+    ? separator + 1 : separator);
 }
 
 function planBulkClose(

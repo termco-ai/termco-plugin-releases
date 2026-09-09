@@ -13,7 +13,6 @@ import type {
   WorkspaceTabsCapability,
 } from "@termco/workspace-base";
 import {
-  type PointerEvent as ReactPointerEvent,
   useCallback,
   useEffect,
   useRef,
@@ -43,10 +42,7 @@ import { speechConfiguration } from "../baseline/lib/stt";
 import { useWorkspaceSnapshot } from "../baseline/lib/useWorkspaceSnapshot";
 import { useChatStore } from "../store/store";
 import { openSettingsWindow } from "../baseline/runtime/settings";
-
-const MIN_DOCK_WIDTH = 360;
-const MAX_DOCK_WIDTH = 560;
-const DEFAULT_DOCK_WIDTH = 384;
+import { useDockResize } from "./useDockResize";
 
 function useHasComposer(): boolean {
   return useChatStore((state) =>
@@ -125,21 +121,7 @@ export function AiDockSurface() {
   const hasComposer = useHasComposer();
   const closePanel = useChatStore((state) => state.closePanel);
   const openMini = useChatStore((state) => state.openMini);
-  const [width, setWidth] = useState(DEFAULT_DOCK_WIDTH);
-  const drag = useRef<{ startX: number; startWidth: number } | null>(null);
-
-  const onPointerDown = useCallback(
-    (event: ReactPointerEvent<HTMLDivElement>) => {
-      drag.current = { startX: event.clientX, startWidth: width };
-      event.currentTarget.setPointerCapture(event.pointerId);
-    },
-    [width],
-  );
-  const onPointerMove = useCallback((event: ReactPointerEvent<HTMLDivElement>) => {
-    if (!drag.current) return;
-    const next = drag.current.startWidth - (event.clientX - drag.current.startX);
-    setWidth(Math.min(MAX_DOCK_WIDTH, Math.max(MIN_DOCK_WIDTH, next)));
-  }, []);
+  const sizing = useDockResize(panelOpen && keysLoaded);
   const onFloat = useCallback(() => {
     closePanel();
     openMini();
@@ -148,21 +130,21 @@ export function AiDockSurface() {
   if (!panelOpen || !keysLoaded) return null;
   return (
     <div
+      ref={sizing.panelRef}
       data-onboarding-target="ai-chat.panel"
-      className="relative flex h-full min-h-0 shrink-0 flex-col border-l border-border/70"
-      style={{ width }}
+      className="relative z-20 flex h-full min-h-0 shrink-0 flex-col border-l border-border/70 bg-background"
+      style={{ width: sizing.width, marginLeft: sizing.marginLeft }}
     >
       <div
         role="separator"
         aria-orientation="vertical"
         aria-label="Resize AI panel"
-        aria-valuenow={Math.round(width)}
-        className="absolute inset-y-0 left-0 z-10 w-1.5 -translate-x-1/2 cursor-col-resize"
-        onPointerDown={onPointerDown}
-        onPointerMove={onPointerMove}
-        onPointerUp={() => {
-          drag.current = null;
-        }}
+        aria-valuenow={Math.round(sizing.width)}
+        aria-valuemin={Math.round(sizing.minimum)}
+        aria-valuemax={Math.round(sizing.maximum)}
+        tabIndex={0}
+        className="absolute inset-y-0 left-0 z-10 w-1.5 -translate-x-1/2 touch-none cursor-col-resize focus-visible:bg-primary/40 focus-visible:outline-none"
+        {...sizing.separatorProps}
       />
       {hasComposer ? (
         <AiDockPanel onClose={closePanel} onFloat={onFloat} />

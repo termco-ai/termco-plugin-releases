@@ -29,6 +29,32 @@ const terminal = (id: number, cold = false, rigId = "default") => ({
 });
 
 describe("WorkspaceTabsStore", () => {
+  it("warms both restored split surfaces and retains their orientation during focus changes", () => {
+    const store = createStore();
+    store.initialize({ tabs: [terminal(1, true), terminal(2, true), terminal(3, true)],
+      activeId: 1, splitTabId: 2, splitDirection: "vertical" });
+    store.transition({ booted: true });
+    expect(store.snapshot().tabs.map((tab) => tab.cold)).toEqual([false, false, true]);
+    store.transition({ focusedPane: "right" });
+    expect(store.snapshot().splitDirection).toBe("vertical");
+    expect(() => store.transition({ splitDirection: "diagonal" as never })).toThrow("split direction");
+    store.transition({ activeId: 2, splitTabId: 0 });
+    expect(store.snapshot()).toMatchObject({ activeId: 2, splitTabId: 0, focusedPane: "left" });
+  });
+
+  it("round-trips vertical layouts and accepts saved layouts without an orientation", async () => {
+    const backing = preferences([{ rigId: "legacy", tabs: [], activeTabIndex: 0, splitTabIndex: -1 }]);
+    const store = new WorkspaceTabsStore(backing.capability);
+    await store.hydrate();
+    await store.saveLayout({ rigId: "vertical", tabs: [{ kind: "editor" }, { kind: "terminal" }],
+      activeTabIndex: 0, splitTabIndex: 1, splitDirection: "vertical", splitPlacement: "before" });
+    const restored = new WorkspaceTabsStore(backing.capability);
+    await restored.hydrate();
+    expect(restored.savedLayouts()).toEqual(store.savedLayouts());
+    expect(restored.savedLayouts()[1].splitDirection).toBe("vertical");
+    expect(restored.savedLayouts()[1].splitPlacement).toBe("before");
+  });
+
   it("initializes once, allocates beyond imported ids, and publishes atomically", () => {
     const store = createStore();
     const listener = vi.fn();

@@ -154,7 +154,37 @@ export function useHeaderRuntime(
           capabilities.tabs.transition({ activeId: id, focusedPane: "left" });
         }
       },
-      splitTab: (id) => capabilities.tabs.transition({ splitTabId: id }),
+      splitTab(id, direction = "horizontal", placement = "after") {
+        const snapshot = capabilities.tabs.snapshot();
+        const target = snapshot.tabs.find((tab) => tab.id === id);
+        if (!target) return;
+        if (id === snapshot.activeId) {
+          // Keep the primary surface mounted: moving its editor to another
+          // host would discard its live buffer and undo history.
+          const companion = snapshot.tabs.find((tab) =>
+            tab.id === snapshot.splitTabId && tab.rigId === target.rigId,
+          ) ?? snapshot.tabs.find((tab) => tab.id !== id && tab.rigId === target.rigId);
+          if (!companion) return;
+          capabilities.tabs.transition({
+            splitTabId: companion.id,
+            splitDirection: direction,
+            splitPlacement: placement === "after" ? "before" : "after",
+            focusedPane: "left",
+          });
+        } else {
+          const primary = snapshot.tabs.find((tab) => tab.id === snapshot.activeId);
+          if (!primary || primary.rigId !== target.rigId) return;
+          capabilities.tabs.transition({
+            splitTabId: id,
+            splitDirection: direction,
+            splitPlacement: placement,
+            focusedPane: "right",
+          });
+        }
+      },
+      newTerminalBelow: capabilities.tabActions.newTerminalBelow
+        ? (id) => { capabilities.tabActions.newTerminalBelow?.(id); }
+        : undefined,
       newTab: () => void capabilities.terminalSessions.open(),
       newBlockTab: () =>
         void capabilities.terminalSessions.open({ blocks: true }),

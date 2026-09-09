@@ -10,12 +10,19 @@ export interface WorkspaceTabRecord {
   data?: Readonly<Record<string, unknown>>;
 }
 
+export type WorkspaceSplitDirection = "horizontal" | "vertical";
+export type WorkspaceSplitPlacement = "before" | "after";
+
 export interface WorkspaceTabsSnapshot {
   revision: number;
   initialized: boolean;
   tabs: readonly WorkspaceTabRecord[];
   activeId: number;
   splitTabId: number;
+  /** Defaults to horizontal for providers predating vertical splits. */
+  splitDirection?: WorkspaceSplitDirection;
+  /** Position of the secondary pane relative to the primary pane. */
+  splitPlacement?: WorkspaceSplitPlacement;
   focusedPane: "left" | "right";
   booted: boolean;
   activeRigIdForNewTabs: string;
@@ -28,6 +35,9 @@ export interface WorkspaceTabsTransition {
   tabs?: readonly WorkspaceTabRecord[];
   activeId?: number;
   splitTabId?: number;
+  splitDirection?: WorkspaceSplitDirection;
+  /** Position of the secondary pane relative to the primary pane. */
+  splitPlacement?: WorkspaceSplitPlacement;
   focusedPane?: "left" | "right";
   booted?: boolean;
   activeRigIdForNewTabs?: string;
@@ -51,6 +61,8 @@ export interface WorkspaceRigTabLayout {
   readonly tabs: readonly WorkspaceSavedTab[];
   readonly activeTabIndex: number;
   readonly splitTabIndex: number;
+  readonly splitDirection?: WorkspaceSplitDirection;
+  readonly splitPlacement?: WorkspaceSplitPlacement;
 }
 
 /** Application-wide workspace tab state. Tab-kind plugins own their opaque

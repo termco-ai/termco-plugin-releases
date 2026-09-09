@@ -25,3 +25,9 @@ and rehydrates its durable sessions without restarting unrelated plugins.
 The dock, floating window, compaction, rich cards, attachments, transcript,
 composer, and model picker preserve the current baseline behavior and UI from
 this source-owned folder.
+
+Drag the dock's left edge to expand Chat or Agents up to the workspace sidebar.
+The sidebar stays in place while the wider dock covers the editor area; dragging
+back reveals the existing editor and terminal sessions. The width adapts to
+window and sidebar resizing. A focused resize handle also supports the arrow
+keys, Home (minimum width), and End (full available width).

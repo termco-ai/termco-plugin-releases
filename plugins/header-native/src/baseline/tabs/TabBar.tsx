@@ -18,6 +18,8 @@ import {
   useState,
   useSyncExternalStore,
 } from "react";
+import { TabLayoutMenu } from "./components/TabLayoutMenu";
+import { TabSnapOverlay } from "./components/TabSnapOverlay";
 import { NewTabMenu } from "./components/NewTabMenu";
 import { TabStripItem } from "./components/TabStripItem";
 import type { DragState } from "./lib/dragState";
@@ -50,7 +52,8 @@ type Props = {
   /** Move a dragged tab to a new position (insertion gap index 0..tabs.length). */
   onReorder: (fromId: number, toGapIndex: number) => void;
   /** Open a tab in a split beside the current one (context menu / drag-to-edge). */
-  onSplit?: (id: number) => void;
+  onSplit?: (id: number, direction?: "horizontal" | "vertical", placement?: "before" | "after") => void;
+  onNewTerminalBelow?: (id: number) => void;
   onOverrideLanguage?: (id: number, lang: string | null) => void;
   compact?: boolean;
 };
@@ -73,6 +76,7 @@ export function TabBar({
   onRename,
   onReorder,
   onSplit,
+  onNewTerminalBelow,
   onOverrideLanguage,
   compact,
 }: Props) {
@@ -83,13 +87,13 @@ export function TabBar({
   const [dropGap, setDropGap] = useState<number | null>(null);
   const [showAllLanguages, setShowAllLanguages] = useState(false);
   const drag = useRef<DragState | null>(null);
-  const overSplit = useSyncExternalStore(
+  const snapTarget = useSyncExternalStore(
     useSplitDrag.subscribe,
-    () => useSplitDrag.getState().overSplit,
-    () => false,
+    () => useSplitDrag.getState().target,
+    () => null,
   );
   const splitSurface =
-    overSplit && typeof document !== "undefined"
+    snapTarget && typeof document !== "undefined"
       ? document.querySelector<HTMLElement>(`[${WORKSPACE_SURFACE_ATTR}]`)
       : null;
 
@@ -162,13 +166,39 @@ export function TabBar({
 
   const endDrag = (currentTarget: HTMLElement) => {
     const st = drag.current;
-    if (st) currentTarget.releasePointerCapture?.(st.pointerId);
+    if (st && currentTarget.hasPointerCapture?.(st.pointerId)) currentTarget.releasePointerCapture(st.pointerId);
     drag.current = null;
     setDraggingId(null);
     setDropGap(null);
-    useSplitDrag.getState().setOverSplit(false);
+    useSplitDrag.getState().setTarget(null);
     document.body.style.userSelect = "";
   };
+
+  useEffect(() => {
+    const cancel = () => {
+      const id = drag.current?.fromId;
+      const element = scrollRef.current?.querySelector<HTMLElement>(`[data-tab-id="${id}"]`);
+      if (element) endDrag(element);
+      else useSplitDrag.getState().setTarget(null);
+    };
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (event.key === "Escape" && drag.current) {
+        event.preventDefault();
+        cancel();
+      }
+    };
+    document.addEventListener("keydown", onKeyDown);
+    window.addEventListener("blur", cancel);
+    return () => {
+      document.removeEventListener("keydown", onKeyDown);
+      window.removeEventListener("blur", cancel);
+    };
+  });
+
+  useEffect(() => () => {
+    useSplitDrag.getState().setTarget(null);
+    if (drag.current?.active) document.body.style.userSelect = "";
+  }, []);
 
   // Horizontal wheel scroll without holding shift.
   useEffect(() => {
@@ -257,11 +287,15 @@ export function TabBar({
                 onRename={onRename}
                 onReorder={onReorder}
                 onSplit={onSplit}
+                onNewTerminalBelow={onNewTerminalBelow}
                 onOverrideLanguage={onOverrideLanguage}
               />
             ))}
           </TabsList>
         </Tabs>
+        {onSplit && <TabLayoutMenu activeId={activeId}
+          label={tabs.find((tab) => tab.id === activeId)?.label ?? "Current tab"}
+          canSplit={tabs.length > 1 && tabs.some((tab) => tab.id === activeId)} onSplit={onSplit} />}
         <NewTabMenu
           onNew={onNew}
           onNewBlock={onNewBlock}
@@ -274,11 +308,7 @@ export function TabBar({
       </div>
       {splitSurface
         ? createPortal(
-            <div
-              data-testid="tab-split-drop-indicator"
-              aria-hidden
-              className="pointer-events-none absolute inset-y-0 right-0 z-20 w-1/2 border-primary/50 border-l-2 bg-primary/10"
-            />,
+            <TabSnapOverlay target={snapTarget!} />,
             splitSurface,
           )
         : null}

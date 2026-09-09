@@ -107,7 +107,8 @@ export interface UiHeaderRuntime {
   findTarget: UiHeaderFindTarget | null;
   palette: UiHeaderPalettePort;
   selectTab(id: number): void;
-  splitTab(id: number): void;
+  splitTab(id: number, direction?: "horizontal" | "vertical", placement?: "before" | "after"): void;
+  newTerminalBelow?(id: number): void;
   newTab(): void;
   newBlockTab(): void;
   newPrivateTab(): void;

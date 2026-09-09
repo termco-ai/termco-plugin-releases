@@ -51,7 +51,8 @@ type Props = {
   /** Move a dragged tab to a new position (insertion gap index). */
   onReorder: (fromId: number, toGapIndex: number) => void;
   /** Open a tab in a split beside the current one. */
-  onSplit?: (id: number) => void;
+  onSplit?: (id: number, direction?: "horizontal" | "vertical", placement?: "before" | "after") => void;
+  onNewTerminalBelow?: (id: number) => void;
   onOverrideLanguage?: (id: number, lang: string | null) => void;
   onToggleSidebar: () => void;
   onActivateAgent: (tabId: number, leafId: number) => void;
@@ -92,6 +93,7 @@ export function Header({
   onRename,
   onReorder,
   onSplit,
+  onNewTerminalBelow,
   onOverrideLanguage,
   onToggleSidebar,
   onActivateAgent,
@@ -275,6 +277,7 @@ export function Header({
             onRename={onRename}
             onReorder={onReorder}
             onSplit={onSplit}
+            onNewTerminalBelow={onNewTerminalBelow}
             onOverrideLanguage={onOverrideLanguage}
             compact={compact}
           />

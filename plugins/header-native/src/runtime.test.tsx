@@ -205,6 +205,7 @@ function capabilities() {
       close: vi.fn(),
       closeMany: vi.fn(),
       newRightOf: vi.fn(),
+      newTerminalBelow: vi.fn(),
       duplicate: vi.fn(),
       rename: vi.fn(),
     },
@@ -226,6 +227,21 @@ function capabilities() {
 }
 
 describe("source-owned header runtime", () => {
+  it("splits the active tab below another tab atomically and routes the file terminal action", () => {
+    const deps = capabilities();
+    deps.tabs.set({ ...deps.tabs.snapshot(), activeId: 1, splitTabId: 0,
+      tabs: [
+        { id: 1, rigId: "remote", kind: "terminal", title: "One", data: { activeLeafId: 7 } },
+        { id: 2, rigId: "remote", kind: "terminal", title: "Two", data: { activeLeafId: 8 } },
+      ] });
+    const { result } = renderHook(() => useHeaderRuntime(deps.values));
+    act(() => result.current.splitTab(1, "vertical"));
+    expect(deps.tabs.transition).toHaveBeenCalledWith({ splitTabId: 2,
+      splitDirection: "vertical", splitPlacement: "before", focusedPane: "left" });
+    act(() => result.current.newTerminalBelow?.(2));
+    expect(deps.values.tabActions.newTerminalBelow).toHaveBeenCalledWith(2);
+  });
+
   it("reads bound provider stores and routes established actions", () => {
     const deps = capabilities();
     const { result, unmount } = renderHook(() => useHeaderRuntime(deps.values));

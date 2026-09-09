@@ -62,6 +62,8 @@ const callbacks = {
   onClose: vi.fn(),
   onCloseMany: vi.fn(),
   onNewTabRight: vi.fn(),
+  onNewTerminalBelow: vi.fn(),
+  onSplit: vi.fn(),
   onDuplicate: vi.fn(),
   onPin: vi.fn(),
   onRename: vi.fn(),
@@ -172,6 +174,22 @@ describe("activation and closing", () => {
     fireEvent.click(screen.getByLabelText("Close tab"));
     expect(callbacks.onClose).toHaveBeenCalledWith(1);
     expect(callbacks.onSelect).not.toHaveBeenCalled();
+  });
+
+  it("offers a new terminal below files and can move an existing tab below", () => {
+    mount(editor());
+    fireEvent.contextMenu(tabEl(2));
+    fireEvent.click(screen.getByText("Open Terminal Below"));
+    expect(callbacks.onNewTerminalBelow).toHaveBeenCalledWith(2);
+    fireEvent.contextMenu(tabEl(2));
+    fireEvent.click(screen.getByText("Open Below"));
+    expect(callbacks.onSplit).toHaveBeenCalledWith(2, "vertical");
+  });
+
+  it("does not offer the file terminal action for terminal tabs", () => {
+    mount(terminal());
+    fireEvent.contextMenu(tabEl(1));
+    expect(screen.queryByText("Open Terminal Below")).toBeNull();
   });
 
   it("editor tabs expose the Chrome-style close-variant context menu", () => {
