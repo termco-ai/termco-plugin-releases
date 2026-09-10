@@ -4,7 +4,7 @@
   "name": "AI Chat Sessions",
   "description": "Owns application-wide chat sessions, transcript restoration, session navigation, model selection, and chat surface state.",
   "category": "Intelligence",
-  "version": "1.0.6",
+  "version": "1.0.7",
   "entrypoints": {
     "renderer": "src/plugin.ts"
   },

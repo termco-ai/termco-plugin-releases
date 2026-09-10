@@ -132,6 +132,7 @@ export function AiDockSurface() {
     <div
       ref={sizing.panelRef}
       data-onboarding-target="ai-chat.panel"
+      data-termco-overlay="true"
       className="relative z-20 flex h-full min-h-0 shrink-0 flex-col border-l border-border/70 bg-background"
       style={{ width: sizing.width, marginLeft: sizing.marginLeft }}
     >

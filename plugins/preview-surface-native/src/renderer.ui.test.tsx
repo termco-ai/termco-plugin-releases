@@ -3,7 +3,7 @@ import type { BrowserAutomationCapability } from "@termco/browser-base";
 import type { DesktopIntegrationCapability } from "@termco/desktop-base";
 import type { ApplicationEventsCapability } from "@termco/events-base";
 import type { UiTabDescriptor, UiTabsRuntime } from "@termco/ui-tabs-base";
-import { cleanup, render, screen } from "@testing-library/react";
+import { act, cleanup, render, screen } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { BrowserClient } from "./browser";
 import { createPreviewSurface } from "./renderer";
@@ -17,7 +17,11 @@ class ResizeObserverStub {
 beforeEach(() => {
   vi.stubGlobal("ResizeObserver", ResizeObserverStub);
 });
-afterEach(cleanup);
+afterEach(() => {
+  cleanup();
+  vi.restoreAllMocks();
+  vi.unstubAllGlobals();
+});
 
 function renderPreview(url = "") {
   const tab: UiTabDescriptor = {
@@ -41,7 +45,8 @@ function renderPreview(url = "") {
   } as unknown as UiTabsRuntime;
   const Surface = createPreviewSurface(new BrowserClient(automation, events), desktop);
   const rendered = render(<Surface tabs={[tab]} activeId={tab.id} surfaceVisible runtime={runtime} />);
-  return { ...rendered, desktop };
+  return { ...rendered, desktop, automation, setVisible: (surfaceVisible: boolean) =>
+    rendered.rerender(<Surface tabs={[tab]} activeId={tab.id} surfaceVisible={surfaceVisible} runtime={runtime} />) };
 }
 
 describe("exact Web Preview surface", () => {
@@ -73,5 +78,41 @@ describe("exact Web Preview surface", () => {
     expect(screen.getByTitle("Forward")).toBeDefined();
     expect(screen.getByTitle("Pick an element and send it to the AI")).toBeDefined();
     expect(screen.getByTitle("Open in system browser")).toBeDefined();
+  });
+
+  it("tracks position-only moves without repeated native calls or polling hidden tabs", () => {
+    let nextFrame = 0;
+    const frames = new Map<number, FrameRequestCallback>();
+    vi.stubGlobal("requestAnimationFrame", (callback: FrameRequestCallback) => {
+      frames.set(++nextFrame, callback);
+      return nextFrame;
+    });
+    vi.stubGlobal("cancelAnimationFrame", (id: number) => frames.delete(id));
+    const tick = () => act(() => {
+      const pending = [...frames.values()];
+      frames.clear();
+      pending.forEach(callback => callback(0));
+    });
+    let y = 100;
+    vi.spyOn(HTMLElement.prototype, "getBoundingClientRect").mockImplementation(() =>
+      ({ x: 100, y, left: 100, top: y, right: 400, bottom: y + 200, width: 300, height: 200, toJSON() {} }));
+    const { automation, setVisible, unmount } = renderPreview("https://example.test");
+    tick();
+    const boundsCalls = () => vi.mocked(automation.invoke).mock.calls.filter(([name]) => name === "browser_set_bounds");
+    const initialCount = boundsCalls().length;
+    for (let frame = 0; frame < 5; frame++) tick();
+    expect(boundsCalls()).toHaveLength(initialCount);
+    y = 400;
+    tick();
+    expect(boundsCalls()).toHaveLength(initialCount + 1);
+    expect(boundsCalls().at(-1)?.[1]).toMatchObject({ bounds: { x: 100, y: 400, width: 300, height: 200 } });
+    setVisible(false);
+    tick();
+    expect(frames.size).toBe(0);
+    setVisible(true);
+    tick();
+    expect(frames.size).toBe(1);
+    unmount();
+    expect(frames.size).toBe(0);
   });
 });

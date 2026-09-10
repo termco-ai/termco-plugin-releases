@@ -11,7 +11,7 @@ const regions: Record<DockPosition, string> = {
 
 export function TabSnapOverlay({ target }: { target: NonNullable<SnapTarget> }) {
   return (
-    <div aria-hidden className="pointer-events-none absolute inset-0 z-50">
+    <div aria-hidden data-termco-overlay="true" className="pointer-events-none absolute inset-0 z-50">
       {target !== "center" && (
         <div data-testid="tab-split-drop-indicator" data-dock-position={target}
           className={cn("absolute rounded-md border-2 border-primary/60 bg-primary/10", regions[target])} />

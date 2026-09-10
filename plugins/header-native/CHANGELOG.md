@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.0.4
+
+- Keep tab docking previews above native browser pages during dragging and restore the browser layer after cancellation or placement.
+
 ## 1.0.3
 
 - Add a visual layout picker and drag previews for placing tabs left, right, above, or below another tab.

@@ -36,6 +36,7 @@ const LIVE_BROWSER_LAYER =
   new URLSearchParams(window.location.search).get("liveBrowserLayer") === "1";
 const {
   forwardRef,
+  useCallback,
   useEffect,
   useImperativeHandle,
   useRef,
@@ -68,6 +69,16 @@ function useBrowserView(
   const [hasSize, setHasSize] = useState(false);
   const [overlayCovers, setOverlayCovers] = useState(false);
   const state = useClientValue(client, () => client.state(tabId));
+  const updateOverlayCoverage = useCallback(() => {
+    const element = hostRef.current;
+    if (!element) { setOverlayCovers(false); return; }
+    const view = element.getBoundingClientRect();
+    setOverlayCovers(
+      localOverlay ||
+      runtime.hasUnpositionedOverlay() ||
+      runtime.overlayRects().some((rect) => rectsOverlap(rect, view)),
+    );
+  }, [localOverlay, runtime]);
 
   useEffect(() => {
     const rect = hostRef.current ? measure(hostRef.current) : { x: 0, y: 0, width: 0, height: 0 };
@@ -84,9 +95,16 @@ function useBrowserView(
       const rect = measure(element);
       const area = hasArea(rect);
       setHasSize(area);
-      if (!area || rectsEqual(lastRect.current, rect)) return;
-      lastRect.current = rect;
-      void client.setBounds(tabId, rect);
+      if (area && !rectsEqual(lastRect.current, rect)) {
+        lastRect.current = rect;
+        void client.setBounds(tabId, rect);
+        updateOverlayCoverage();
+      }
+      // ResizeObserver does not report position-only changes. Docking can
+      // swap equally sized panes, and CSS transitions move them between
+      // frames. Track visible native views through those moves; unchanged
+      // rectangles never send IPC, and hidden tabs stop the frame loop.
+      if (visible) frame = requestAnimationFrame(push);
     };
     const schedule = () => { if (!frame) frame = requestAnimationFrame(push); };
     const observer = new ResizeObserver(schedule);
@@ -98,22 +116,12 @@ function useBrowserView(
       window.removeEventListener("resize", schedule);
       if (frame) cancelAnimationFrame(frame);
     };
-  }, [client, tabId]);
+  }, [client, tabId, updateOverlayCoverage, visible]);
 
   useEffect(() => {
-    const compute = () => {
-      const element = hostRef.current;
-      if (!element) { setOverlayCovers(false); return; }
-      const view = element.getBoundingClientRect();
-      setOverlayCovers(
-        localOverlay ||
-        runtime.hasUnpositionedOverlay() ||
-        runtime.overlayRects().some((rect) => rectsOverlap(rect, view)),
-      );
-    };
-    compute();
-    return runtime.subscribeOverlays(compute);
-  }, [localOverlay, runtime]);
+    updateOverlayCoverage();
+    return runtime.subscribeOverlays(updateOverlayCoverage);
+  }, [runtime, updateOverlayCoverage]);
 
   const showable = visible && hasSize && Boolean(initialUrl) && !state?.crashed && !state?.loadError;
   const effectiveVisible = showable && (LIVE_BROWSER_LAYER || !overlayCovers);
@@ -136,6 +144,7 @@ function useBrowserView(
   return {
     hostRef,
     state,
+    nativeVisible: effectiveVisible,
     navigate: (url: string) => client.loadUrl(tabId, url),
     overlayHidden: !LIVE_BROWSER_LAYER && showable && overlayCovers,
   };
@@ -237,7 +246,7 @@ function IconButton({ title, icon, disabled, active, badge, size = 14, onClick }
   return <button type="button" title={title} disabled={disabled} onClick={onClick} className={`${buttonClass} relative ${active ? "bg-accent text-foreground" : ""}`}><HugeiconsIcon icon={icon as never} size={size} strokeWidth={1.75} />{badge ? <span className="absolute -right-0.5 -top-0.5 grid min-w-4 place-items-center rounded-full bg-destructive px-0.5 text-[10px] text-white">{badge > 99 ? "99+" : badge}</span> : null}</button>;
 }
 
-function ViewHost({ client, tabId, hostRef, url, state, overlayHidden, reload }: { client: BrowserClient; tabId: number; hostRef: { current: HTMLDivElement | null }; url: string; state: BrowserTabState | null; overlayHidden: boolean; reload(): void }) {
+function ViewHost({ client, tabId, hostRef, url, state, nativeVisible, overlayHidden, reload }: { client: BrowserClient; tabId: number; hostRef: { current: HTMLDivElement | null }; url: string; state: BrowserTabState | null; nativeVisible: boolean; overlayHidden: boolean; reload(): void }) {
   const moveFrame = useRef(0);
   const pendingMove = useRef<Record<string, unknown> | null>(null);
   useEffect(() => () => {
@@ -289,8 +298,8 @@ function ViewHost({ client, tabId, hostRef, url, state, overlayHidden, reload }:
   };
   return <div
     ref={hostRef}
-    data-live-browser-hole={LIVE_BROWSER_LAYER ? "true" : undefined}
-    className={`relative min-h-0 flex-1 ${LIVE_BROWSER_LAYER ? "bg-transparent" : "bg-background"}`}
+    data-live-browser-hole={LIVE_BROWSER_LAYER && nativeVisible ? "true" : undefined}
+    className={`relative min-h-0 flex-1 ${LIVE_BROWSER_LAYER && nativeVisible ? "bg-transparent" : "bg-background"}`}
     onPointerDown={(event) => forwardPointer("mouseDown", event)}
     onPointerUp={(event) => forwardPointer("mouseUp", event)}
     onPointerMove={forwardPointerMove}
@@ -345,9 +354,9 @@ const PreviewPane = forwardRef<PaneHandle, { client: BrowserClient; desktop: Des
   useEffect(() => {
     if (browser.state?.title && browser.state.title !== tab.title) runtime.updateTab(tab.id, { title: browser.state.title });
   }, [browser.state?.title, runtime, tab.id, tab.title]);
-  return <div className={`flex h-full w-full flex-col overflow-hidden ${LIVE_BROWSER_LAYER ? "bg-transparent" : "bg-background"}`} style={{ visibility: visible ? "visible" : "hidden", pointerEvents: visible ? "auto" : "none" }}>
+  return <div className={`flex h-full w-full flex-col overflow-hidden ${LIVE_BROWSER_LAYER && browser.nativeVisible ? "bg-transparent" : "bg-background"}`} style={{ visibility: visible ? "visible" : "hidden", pointerEvents: visible ? "auto" : "none" }}>
     <AddressBar ref={address} client={client} desktop={desktop} runtime={runtime} tabId={tab.id} url={tab.url ?? ""} state={browser.state} onNavigate={(url) => { void browser.navigate(url); void client.focus(tab.id); }} onMenu={setMenuOpen} onToggleDev={() => setDevOpen((open) => !open)} devOpen={devOpen} errorCount={logs.filter((entry) => entry.level === "error").length} />
-    <ViewHost client={client} tabId={tab.id} hostRef={browser.hostRef} url={tab.url ?? ""} state={browser.state} overlayHidden={browser.overlayHidden} reload={() => void client.reload(tab.id)} />
+    <ViewHost client={client} tabId={tab.id} hostRef={browser.hostRef} url={tab.url ?? ""} state={browser.state} nativeVisible={browser.nativeVisible} overlayHidden={browser.overlayHidden} reload={() => void client.reload(tab.id)} />
     {devOpen ? <div className="h-2/5 min-h-[120px] shrink-0"><DevPanel client={client} tabId={tab.id} close={() => setDevOpen(false)} /></div> : null}
   </div>;
 });

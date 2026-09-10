@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.0.7
+
+- Keep expanded Chat and Agents above native browser panes while resizing across the workspace.
+- Preserve interaction with exposed browser content during partial chat expansion.
+
 ## 1.0.6
 
 - Expand Chat and Agents up to the left sidebar instead of stopping at 560 pixels, and drag the panel back to a narrower width.
