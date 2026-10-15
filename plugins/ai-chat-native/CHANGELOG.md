@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.0.8
+
+- Keep a turn running when the model calls an unavailable tool or a tool fails; the error goes back to the model as the call's result instead of ending the turn.
+- Keep tools the model already called in this chat available in later turns and in the step after a call that failed because the tool was unavailable.
+- Before a stopped, failed, or finished turn closes, wait for tool calls that are still being written and give every call without a result one.
+- Repair the session and accept new messages when a turn could not be closed, instead of failing every later message with the same error.
+
 ## 1.0.7
 
 - Keep expanded Chat and Agents above native browser panes while resizing across the workspace.

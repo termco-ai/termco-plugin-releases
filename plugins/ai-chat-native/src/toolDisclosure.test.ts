@@ -1,6 +1,6 @@
 import type { AiToolEntry } from "@termco/ai-tools-base";
 import { describe, expect, it } from "vitest";
-import { createToolDisclosure } from "./toolDisclosure";
+import { calledToolNames, createToolDisclosure } from "./toolDisclosure";
 
 function definition(description: string): AiToolEntry {
   return {
@@ -167,6 +167,41 @@ describe("tool disclosure", () => {
 
     const nextTurn = createToolDisclosure({ definitions, groups });
     expect(nextTurn.activeToolNames()).not.toContain("browser_open");
+  });
+
+  it("keeps tools the model already called available in later turns", () => {
+    const history = [
+      { role: "user", parts: [{ type: "text", text: "open the docs" }] },
+      {
+        role: "assistant",
+        parts: [
+          { type: "tool-tool_search", toolCallId: "search-1", state: "output-available" },
+          { type: "tool-browser_open", toolCallId: "call-1", state: "output-available" },
+          { type: "dynamic-tool", toolName: "git_status", toolCallId: "call-2", state: "output-error" },
+          { type: "text", text: "done" },
+        ],
+      },
+    ];
+    expect(calledToolNames(history)).toEqual(["tool_search", "browser_open", "git_status"]);
+
+    const nextTurn = createToolDisclosure({ definitions, groups });
+    expect(nextTurn.restore(calledToolNames(history))).toEqual(["browser_open", "git_status"]);
+    expect(nextTurn.activeToolNames()).toEqual(expect.arrayContaining([
+      "browser_open",
+      "git_status",
+    ]));
+    expect(nextTurn.activeToolNames()).not.toContain("plugin_create");
+  });
+
+  it("never restores unknown or policy-hidden tools", () => {
+    const disclosure = createToolDisclosure({
+      definitions,
+      groups,
+      hiddenGroups: ["plugin-dev"],
+    });
+
+    expect(disclosure.restore(["plugin_create", "invented_tool", "read_file"])).toEqual([]);
+    expect(disclosure.activeToolNames()).not.toContain("plugin_create");
   });
 
   it("indexes nested schema parameter names and descriptions with ranked partial matching", () => {

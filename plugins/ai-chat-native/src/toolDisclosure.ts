@@ -39,6 +39,9 @@ export interface ToolDisclosure {
   readonly toolSearchDefinition: AiToolEntry;
   activeToolNames(additionalPreferredGroups?: readonly string[]): string[];
   prime(request: string): string[];
+  /** Keeps authorized tools the model already called available, so it never
+   * meets an unavailable tool it can see in its own history. */
+  restore(names: Iterable<string>): string[];
   search(query: string, limit?: number): ToolSearchResult;
   telemetry(): {
     catalogSize: number;
@@ -71,6 +74,25 @@ function words(value: string): string[] {
     .toLocaleLowerCase()
     .split(/[^a-z0-9]+/u)
     .filter(Boolean);
+}
+
+/** Names of every tool the model called in the given UI messages. */
+export function calledToolNames(messages: readonly unknown[]): string[] {
+  const names = new Set<string>();
+  for (const message of messages) {
+    const parts = (message as { parts?: unknown } | null)?.parts;
+    if (!Array.isArray(parts)) continue;
+    for (const part of parts) {
+      const value = part as { type?: unknown; toolName?: unknown } | null;
+      if (typeof value?.type !== "string") continue;
+      if (value.type === "dynamic-tool") {
+        if (typeof value.toolName === "string") names.add(value.toolName);
+      } else if (value.type.startsWith("tool-")) {
+        names.add(value.type.slice("tool-".length));
+      }
+    }
+  }
+  return [...names];
 }
 
 function compactText(value: string, limit: number): string {
@@ -298,6 +320,17 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
     return matched;
   };
 
+  const restore = (names: Iterable<string>): string[] => {
+    const restored: string[] = [];
+    for (const name of names) {
+      const entry = catalogByName.get(name);
+      if (!entry || initiallyActive(entry) || loaded.has(name)) continue;
+      loaded.add(name);
+      restored.push(name);
+    }
+    return restored;
+  };
+
   const toolSearchDefinition: AiToolEntry = {
     description: [
       "Search the complete authorized tool catalog and load the most relevant exact schemas for the next step. The list below is a compact capability index, not the complete schemas. Search before claiming a capability is unavailable, improvising with shell commands, or falling back to Markdown when a native presentation fits. Discovery never executes a tool and never requires approval.",
@@ -353,6 +386,7 @@ export function createToolDisclosure(input: Input): ToolDisclosure {
         .filter((name) => name === TOOL_SEARCH_NAME || availableNames.has(name));
     },
     prime,
+    restore,
     search,
     telemetry() {
       const eagerCount = catalog.filter((entry) =>

@@ -15,12 +15,15 @@ import {
   createSessionStepPersistenceGate,
   createSessionStreamRecorder,
   createSessionTurnClosureGate,
+  createStreamRecording,
   createToolCallHandleResolver,
+  createToolErrorClassifier,
   describeSessionTools,
   executeAfterToolPresentation,
   inspectE2EToolDefinitions,
   invokeE2ETool,
   modelValueForSessionToolResult,
+  observedStream,
   respondToOwnedApproval,
   respondToOwnedInteractiveTool,
   recordedStream,
@@ -36,9 +39,14 @@ import {
   StepId,
   ToolCallId,
   TurnId,
+  parseSessionEvent,
+  validateSessionHistory,
+  type AppendSessionEvent,
+  type ParsedSessionEvent,
   type SessionHistoryCapability,
 } from "@termco/session-base";
-import { configureSessionRuntime } from "./runtime";
+import { toUIMessageStream } from "ai";
+import { beginChatTurn, configureSessionRuntime, failChatTurn } from "./runtime";
 import { markToolPresentationMounted } from "./toolPresentation";
 import { toolContexts } from "./store/registry";
 import { useChatStore } from "./store/store";
@@ -1029,6 +1037,347 @@ describe("provider-owned chat runtime", () => {
     expect(append.mock.calls[0]?.[1]).toHaveLength(20);
   });
 });
+
+describe("turn closure after tool failures", () => {
+  it("formats invalid and failed tool calls as results without treating them as stream failures", async () => {
+    const unavailable = new Error("AI_NoSuchToolError: Model tried to call unavailable tool 'mcp__jira__call_tool'");
+    const failed = new Error("tool threw");
+    const fatal = new Error("connection reset");
+    const providerParts = [
+      { type: "start" },
+      {
+        type: "tool-call",
+        toolCallId: "call-1",
+        toolName: "mcp__jira__call_tool",
+        input: {},
+        dynamic: true,
+        invalid: true,
+        error: unavailable,
+      },
+      {
+        type: "tool-error",
+        toolCallId: "call-1",
+        toolName: "mcp__jira__call_tool",
+        input: {},
+        dynamic: true,
+        error: unavailable,
+      },
+      { type: "tool-call", toolCallId: "call-2", toolName: "read_file", input: {} },
+      { type: "tool-error", toolCallId: "call-2", toolName: "read_file", input: {}, error: failed },
+      { type: "error", error: fatal },
+    ];
+    const source = new ReadableStream<unknown>({
+      start(controller) {
+        for (const part of providerParts) controller.enqueue(part);
+        controller.close();
+      },
+    });
+    const classifier = createToolErrorClassifier();
+    const streamFailures: unknown[] = [];
+    const chunks = toUIMessageStream({
+      stream: observedStream(source, classifier.observe) as never,
+      onError(error) {
+        if (!classifier.isToolError(error)) streamFailures.push(error);
+        return error instanceof Error ? error.message : String(error);
+      },
+    }).getReader();
+    const types: string[] = [];
+    while (true) {
+      const item = await chunks.read();
+      if (item.done) break;
+      types.push(item.value.type);
+    }
+
+    expect(types).toEqual(expect.arrayContaining([
+      "tool-input-error",
+      "tool-output-error",
+      "error",
+    ]));
+    expect(streamFailures).toEqual([fatal]);
+  });
+
+  it("classifies each observed tool error once and ignores provider-executed ones", () => {
+    const classifier = createToolErrorClassifier();
+    const shared = "tool failed";
+    const providerExecuted = new Error("remote tool failed");
+    classifier.observe({ type: "tool-error", error: shared });
+    classifier.observe({ type: "tool-error", error: providerExecuted, providerExecuted: true });
+
+    expect(classifier.isToolError(providerExecuted)).toBe(false);
+    expect(classifier.isToolError(shared)).toBe(true);
+    expect(classifier.isToolError(shared)).toBe(false);
+  });
+
+  it("gives an unresolved tool call a result so a provider failure can close its turn", async () => {
+    const { history, events } = validatingHistory();
+    configureSessionRuntime({ preferences: preferencesStub(), history, models: [] });
+    const handle = await beginChatTurn({
+      sessionId: "session-1",
+      userMessage: { id: "user-1", role: "user", parts: [{ type: "text", text: "Fetch the ticket" }] },
+      selectedModelId: "model-1",
+      providerRoute: "test",
+      providerModelId: "model-1",
+      instructions: "",
+      messages: [],
+      tools: [],
+      activeTools: [],
+      approvalPolicy: { mode: "ask" },
+    });
+    const execution = historyBackedExecutor(history);
+    const recorder = createSessionStreamRecorder(handle, {
+      sessionId: "session-1",
+      definitions: { read_file: definition("Read a file") },
+      execution,
+      contributors: new Map(),
+      approvalPolicy: { mode: "ask" },
+    });
+    await recorder.record({
+      type: "tool-call",
+      toolName: "read_file",
+      toolCallId: "call-1",
+      input: { path: "a.ts" },
+    });
+    const providerFailure = new Error("connection reset");
+
+    await expect(failChatTurn({ sessionId: "session-1", handle, error: providerFailure }))
+      .rejects.toThrow("violates tool-call-before-step-end: call call-1 has no result");
+
+    await recorder.terminateUnresolved({
+      name: "ProviderError",
+      code: "PROVIDER_FAILED",
+      message: "connection reset",
+    }, "unavailable");
+    await failChatTurn({ sessionId: "session-1", handle, error: providerFailure });
+
+    expect(recorder.unresolvedCallIds()).toEqual([]);
+    expect(events.map((event) => event.type).slice(-4)).toEqual([
+      "tool/result",
+      "request/failure",
+      "step/end",
+      "turn/end",
+    ]);
+    expect(validateSessionHistory(events)).toMatchObject({ unresolvedCallIds: [] });
+    expect(validateSessionHistory(events).openTurn).toBeUndefined();
+  });
+
+  it("keeps human-input calls open when the closure suspends for them", async () => {
+    const execution = toolExecutor();
+    const recorder = createSessionStreamRecorder({
+      turn: TurnId(2),
+      step: StepId(3),
+      requestId: RequestId("request-1"),
+    }, {
+      sessionId: "session-1",
+      definitions: {
+        ask_ui: {
+          description: "Wait for a user choice",
+          inputSchema: { type: "object", properties: {} },
+        },
+        read_file: definition("Read a file"),
+        grep: definition("Search files"),
+      },
+      execution,
+      contributors: new Map(),
+      approvalPolicy: { mode: "ask" },
+    });
+    await recorder.record({ type: "tool-call", toolName: "ask_ui", toolCallId: "call-1", input: {} });
+    await recorder.record({ type: "tool-call", toolName: "read_file", toolCallId: "call-2", input: {} });
+    await recorder.record({ type: "tool-call", toolName: "grep", toolCallId: "call-3", input: {} });
+    await recorder.record({ type: "tool-result", toolName: "grep", toolCallId: "call-3", output: [] });
+    expect(recorder.unresolvedCallIds()).toEqual(["call-1", "call-2"]);
+
+    await recorder.terminateUnresolved({
+      name: "ToolExecutionCancelled",
+      code: "USER_CANCELLED",
+      message: "Stopped by user",
+    }, "cancelled", { exceptWaiting: true });
+
+    expect(execution.complete).toHaveBeenCalledOnce();
+    expect(execution.complete).toHaveBeenCalledWith(expect.objectContaining({
+      callId: "call-2",
+      error: expect.objectContaining({ code: "USER_CANCELLED" }),
+    }));
+    expect(recorder.unresolvedCallIds()).toEqual(["call-1"]);
+    expect(recorder.waiting()).toEqual({ callIds: ["call-1"], approvalIds: [] });
+  });
+
+  it("lets a closing turn wait for tool records that are still being written", async () => {
+    configureSessionRuntime({
+      preferences: preferencesStub(),
+      history: { append: vi.fn(async () => {}) } as unknown as SessionHistoryCapability,
+      models: [],
+    });
+    let releaseMapping!: () => void;
+    const mappingBlocked = new Promise<void>((resolve) => { releaseMapping = resolve; });
+    const recording = createStreamRecording("session-1", async () => {
+      await mappingBlocked;
+      return [];
+    });
+    const reader = (recording.pipe(new ReadableStream<unknown>({
+      start(controller) {
+        controller.enqueue({ type: "tool-call", toolCallId: "call-1", toolName: "read_file" });
+        controller.close();
+      },
+    })) as ReadableStream<unknown>).getReader();
+    await reader.read();
+
+    let drained = false;
+    const draining = recording.drain(5_000).then(() => { drained = true; });
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    expect(drained).toBe(false);
+
+    releaseMapping();
+    await draining;
+    expect(drained).toBe(true);
+  });
+
+  it("bounds the wait for tool records that never finish", async () => {
+    const recording = createStreamRecording("session-1", () => new Promise(() => {}));
+    const reader = (recording.pipe(new ReadableStream<unknown>({
+      start(controller) {
+        controller.enqueue({ type: "tool-call", toolCallId: "call-1", toolName: "read_file" });
+        controller.close();
+      },
+    })) as ReadableStream<unknown>).getReader();
+    await reader.read();
+
+    await expect(recording.drain(10)).resolves.toBeUndefined();
+  });
+
+  it("repairs the tail a failed closure left open before the next turn opens", async () => {
+    const recover = vi.fn(async () => {});
+    const gate = createSessionTurnClosureGate({ recover });
+    const failure = new Error("seq 240 (step/end) violates tool-call-before-step-end");
+    await expect(gate.open("session-1").close(async () => { throw failure; }))
+      .rejects.toThrow(failure);
+
+    await expect(gate.beforeOpen("session-1")).resolves.toBeUndefined();
+    await expect(gate.beforeOpen("session-1")).resolves.toBeUndefined();
+    expect(recover).toHaveBeenCalledOnce();
+    expect(recover).toHaveBeenCalledWith("session-1", failure);
+    expect(() => gate.open("session-1")).not.toThrow();
+  });
+
+  it("keeps refusing new turns while the repair fails and retries it on the next send", async () => {
+    const recover = vi.fn()
+      .mockRejectedValueOnce(new Error("disk unavailable"))
+      .mockResolvedValueOnce(undefined);
+    const gate = createSessionTurnClosureGate({ recover });
+    await expect(gate.open("session-1").close(async () => {
+      throw new Error("turn/end was not durable");
+    })).rejects.toThrow("turn/end was not durable");
+
+    await expect(gate.beforeOpen("session-1")).rejects.toThrow(
+      "turn/end was not durable (session repair failed: disk unavailable)",
+    );
+    await expect(gate.beforeOpen("session-1")).resolves.toBeUndefined();
+    expect(recover).toHaveBeenCalledTimes(2);
+  });
+
+  it("repairs a failed Stop closure instead of failing every later Stop", async () => {
+    const recover = vi.fn(async () => {});
+    const gate = createSessionTurnClosureGate({ recover });
+    gate.open("session-1", async () => { throw new Error("abort was not durable"); });
+
+    await expect(gate.stop("session-1")).resolves.toBeUndefined();
+    await expect(gate.beforeOpen("session-1")).resolves.toBeUndefined();
+    expect(recover).toHaveBeenCalledOnce();
+  });
+});
+
+function preferencesStub() {
+  return {
+    get: async () => undefined,
+    getMany: async () => ({}),
+    set: async () => {},
+    delete: async () => false,
+    subscribe: () => () => {},
+  };
+}
+
+/** Appends like the session owner: every batch must keep the history valid. */
+function validatingHistory() {
+  const events: ParsedSessionEvent[] = [];
+  const history = {
+    async append(sessionId: unknown, input: readonly AppendSessionEvent[]) {
+      const committed = input.map((event, index) =>
+        parseSessionEvent({ ...event, seq: SessionSeq(events.length + index) })
+      );
+      validateSessionHistory([...events, ...committed]);
+      events.push(...committed);
+      return {
+        sessionId,
+        firstSeq: committed[0]!.seq,
+        lastSeq: committed.at(-1)!.seq,
+        revision: SessionRevision(events.length),
+        durability: "written" as const,
+      };
+    },
+    async readWindow() {
+      return {
+        header: {
+          formatVersion: SESSION_FORMAT_VERSION,
+          id: SessionId("session-1"),
+          createdAt: 1,
+          authority: "v2" as const,
+          backend: "chat",
+          fidelity: "full" as const,
+        },
+        events: [...events],
+        revision: SessionRevision(events.length),
+        loadedRange: events.length === 0 ? null : { start: 0, end: events.length - 1 },
+        availability: { earlier: false, later: false },
+        fidelity: "full" as const,
+        repair: { state: "healthy" as const },
+      };
+    },
+  };
+  return { history: history as unknown as SessionHistoryCapability, events };
+}
+
+function historyBackedExecutor(history: SessionHistoryCapability): AiToolExecutionCapability {
+  const execution = toolExecutor();
+  execution.recordCall = vi.fn(async (call) => {
+    await history.append(SessionId(call.sessionId), [{
+      type: "tool/call",
+      time: Date.now(),
+      data: {
+        turn: call.turn,
+        step: call.step,
+        requestId: call.requestId,
+        callId: call.callId,
+        name: call.name,
+        rawArguments: JSON.stringify(call.input),
+        parsedInput: call.input as never,
+        contributor: call.contributor,
+        concurrency: call.concurrency ?? "exclusive",
+      },
+    }]);
+  });
+  execution.complete = vi.fn(async (input) => {
+    const canonicalOutput = { ok: false, error: input.error } as never;
+    await history.append(SessionId(input.sessionId), [{
+      type: "tool/result",
+      time: Date.now(),
+      data: {
+        turn: input.turn,
+        step: input.step,
+        callId: input.callId,
+        canonicalOutput,
+        modelContent: { type: "json", value: canonicalOutput },
+        ...(input.error ? { error: input.error as never } : {}),
+      },
+      surfaceOp: { op: "append" },
+    }]);
+    return {
+      ok: false as const,
+      error: input.error!,
+      canonicalOutput,
+      modelContent: { type: "json", value: canonicalOutput },
+    };
+  });
+  return execution;
+}
 
 function suspendedHistory() {
   return {

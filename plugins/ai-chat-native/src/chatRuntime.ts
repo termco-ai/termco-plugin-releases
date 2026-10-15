@@ -84,6 +84,7 @@ import {
 import { noteStreamError } from "./baseline/store/chatRuntime/overflow";
 import { useTodosStore } from "./baseline/store/todoStore";
 import {
+  calledToolNames,
   createToolDisclosure,
   type ToolDiscoveryCapability,
   TOOL_SEARCH_NAME,
@@ -649,7 +650,23 @@ export function createSessionStepPersistenceGate(): {
   };
 }
 
-export function createSessionTurnClosureGate(): {
+interface TurnClosureState {
+  readonly done: Promise<void>;
+  resolve(): void;
+  reject(error: unknown): void;
+  stopWork?: () => Promise<void>;
+  closePromise?: Promise<void>;
+  recovery?: Promise<void>;
+}
+
+function errorText(error: unknown): string {
+  return error instanceof Error ? error.message : String(error);
+}
+
+export function createSessionTurnClosureGate(options: {
+  /** Durably closes the tail a failed closure left open. */
+  readonly recover?: (sessionId: string, error: unknown) => Promise<void>;
+} = {}): {
   beforeOpen(sessionId: string): Promise<void>;
   stop(sessionId: string): Promise<void>;
   open(
@@ -657,16 +674,39 @@ export function createSessionTurnClosureGate(): {
     stopWork?: () => Promise<void>,
   ): { close(work: () => Promise<void>): Promise<void> };
 } {
-  const active = new Map<string, {
-    readonly done: Promise<void>;
-    resolve(): void;
-    reject(error: unknown): void;
-    stopWork?: () => Promise<void>;
-    closePromise?: Promise<void>;
-  }>();
+  const active = new Map<string, TurnClosureState>();
+  // A failed closure never lets another turn open over its open tail. The
+  // session owner's tail repair is the only way forward; once it is durable
+  // the session is consistent again and Chat must not stay blocked forever.
+  const recoverOrThrow = async (
+    sessionId: string,
+    state: TurnClosureState,
+    error: unknown,
+  ): Promise<void> => {
+    if (!options.recover) throw error;
+    state.recovery ??= options.recover(sessionId, error).then(
+      () => {
+        if (active.get(sessionId) === state) active.delete(sessionId);
+      },
+      (repairError: unknown) => {
+        state.recovery = undefined;
+        throw new Error(
+          `${errorText(error)} (session repair failed: ${errorText(repairError)})`,
+          { cause: repairError },
+        );
+      },
+    );
+    await state.recovery;
+  };
   return {
     async beforeOpen(sessionId) {
-      await active.get(sessionId)?.done;
+      const state = active.get(sessionId);
+      if (!state) return;
+      try {
+        await state.done;
+      } catch (error) {
+        await recoverOrThrow(sessionId, state, error);
+      }
     },
     async stop(sessionId) {
       const state = active.get(sessionId);
@@ -686,7 +726,11 @@ export function createSessionTurnClosureGate(): {
           },
         );
       }
-      await state.closePromise;
+      try {
+        await state.closePromise;
+      } catch (error) {
+        await recoverOrThrow(sessionId, state, error);
+      }
     },
     open(sessionId, stopWork) {
       if (active.has(sessionId)) {
@@ -699,15 +743,9 @@ export function createSessionTurnClosureGate(): {
         reject = rejectPromise;
       });
       // A failed closure remains registered so later sends observe the durable
-      // write failure instead of opening another canonical turn.
+      // write failure and repair the tail instead of opening over it.
       void done.catch(() => undefined);
-      const state = { done, resolve, reject, stopWork } as {
-        readonly done: Promise<void>;
-        resolve(): void;
-        reject(error: unknown): void;
-        stopWork?: () => Promise<void>;
-        closePromise?: Promise<void>;
-      };
+      const state: TurnClosureState = { done, resolve, reject, stopWork };
       active.set(sessionId, state);
       return {
         close(work) {
@@ -729,7 +767,71 @@ export function createSessionTurnClosureGate(): {
   };
 }
 
-const sessionTurnClosures = createSessionTurnClosureGate();
+const sessionTurnClosures = createSessionTurnClosureGate({
+  recover: (sessionId) => prepareOwnedSessionForContinuation(sessionId),
+});
+
+/** Bounds how long a closing turn waits for in-flight tool records. */
+const CLOSURE_SETTLE_TIMEOUT_MS = 10_000;
+
+const STOPPED_TOOL_ERROR: AiToolExecutionError = {
+  name: "ToolExecutionCancelled",
+  code: "USER_CANCELLED",
+  message: "Stopped by user",
+};
+
+const INTERRUPTED_TOOL_ERROR: AiToolExecutionError = {
+  name: "ToolExecutionInterrupted",
+  code: "TOOL_INTERRUPTED",
+  message: "The model response ended before this tool produced a result",
+};
+
+/**
+ * AI SDK `toUIMessageStream` calls `onError` to format three kinds of errors:
+ * invalid tool calls, failed tool executions, and fatal stream errors. Only a
+ * fatal stream error ends the provider turn; the other two are ordinary tool
+ * results the model reads on its next step. Observing the provider parts before
+ * the UI conversion tells them apart by identity.
+ */
+export function createToolErrorClassifier(): {
+  observe(part: unknown): void;
+  isToolError(error: unknown): boolean;
+} {
+  const pending = new Map<unknown, number>();
+  return {
+    observe(part) {
+      const value = record(part);
+      const toolLevel =
+        (value.type === "tool-error" && value.providerExecuted !== true) ||
+        (value.type === "tool-call" && value.invalid === true);
+      if (!toolLevel) return;
+      pending.set(value.error, (pending.get(value.error) ?? 0) + 1);
+    },
+    isToolError(error) {
+      const count = pending.get(error);
+      if (count === undefined) return false;
+      if (count <= 1) pending.delete(error);
+      else pending.set(error, count - 1);
+      return true;
+    },
+  };
+}
+
+export function observedStream(
+  stream: unknown,
+  observe: (part: unknown) => void,
+): unknown {
+  const readable = stream as ReadableStream<unknown> | null;
+  if (!readable || typeof readable.pipeThrough !== "function") return stream;
+  return readable.pipeThrough(
+    new TransformStream<unknown, unknown>({
+      transform(part, controller) {
+        observe(part);
+        controller.enqueue(part);
+      },
+    }),
+  );
+}
 
 export interface SessionHumanInputWait {
   readonly callIds: readonly string[];
@@ -753,6 +855,14 @@ export function createSessionStreamRecorder(
     error: AiToolExecutionError,
     approvalOutcome: "cancelled" | "unavailable",
   ): Promise<void>;
+  /** Calls this stream recorded that have no terminal result yet. */
+  unresolvedCallIds(): string[];
+  /** Gives every unresolved call a terminal result so its step can close. */
+  terminateUnresolved(
+    error: AiToolExecutionError,
+    approvalOutcome: "cancelled" | "unavailable",
+    terminateOptions?: { readonly exceptWaiting?: boolean },
+  ): Promise<void>;
 } {
   const calls = new Map<string, {
     call: Parameters<AiToolExecutionCapability["recordCall"]>[0];
@@ -773,6 +883,7 @@ export function createSessionStreamRecorder(
   const approvalCalls = new Map<string, ReturnType<typeof calls.get>>();
   const humanCallIds = new Set<string>();
   const humanApprovalIds = new Set<string>();
+  const openCallIds = new Set<string>();
   const currentHandle = (): ChatTurnHandle =>
     typeof handleInput === "function" ? handleInput() : handleInput;
 
@@ -827,6 +938,7 @@ export function createSessionStreamRecorder(
         const tracked = toolCall(value);
         if (tracked) {
           await options.execution.recordCall(tracked.call);
+          openCallIds.add(String(tracked.call.callId));
           if (!tracked.definition.execute) humanCallIds.add(String(tracked.call.callId));
         }
         return [];
@@ -851,6 +963,7 @@ export function createSessionStreamRecorder(
           approvalId: ApprovalId(approvalId),
           resolution,
         });
+        openCallIds.add(callId);
         if (resolution.action === "ask") {
           humanCallIds.add(callId);
           humanApprovalIds.add(approvalId);
@@ -888,12 +1001,18 @@ export function createSessionStreamRecorder(
         if (value.preliminary === true) return [];
         const callId = typeof value.toolCallId === "string" ? value.toolCallId : "";
         const tracked = calls.get(callId);
-        if (!tracked || tracked.definition.execute) return [];
+        if (!tracked) return [];
+        if (tracked.definition.execute) {
+          // The execution owner stores an executed result before the SDK emits it.
+          openCallIds.delete(callId);
+          return [];
+        }
         await options.execution.complete({
           ...tracked.call,
           definition: tracked.definition,
           output: value.output,
         });
+        openCallIds.delete(callId);
         humanCallIds.delete(callId);
         return [];
       }
@@ -915,6 +1034,7 @@ export function createSessionStreamRecorder(
               : String(value.error ?? "tool failed"),
           },
         });
+        openCallIds.delete(callId);
         humanCallIds.delete(callId);
         return [];
       }
@@ -931,6 +1051,7 @@ export function createSessionStreamRecorder(
             message: "tool execution was denied",
           },
         });
+        openCallIds.delete(callId);
         humanCallIds.delete(callId);
         return [];
       }
@@ -970,6 +1091,42 @@ export function createSessionStreamRecorder(
           definition: tracked.definition,
           error,
         });
+        openCallIds.delete(callId);
+        humanCallIds.delete(callId);
+      }
+    },
+    unresolvedCallIds() {
+      return [...openCallIds].sort();
+    },
+    async terminateUnresolved(error, approvalOutcome, terminateOptions = {}) {
+      for (const callId of [...openCallIds].sort()) {
+        if (terminateOptions.exceptWaiting && humanCallIds.has(callId)) continue;
+        const tracked = calls.get(callId);
+        if (!tracked) continue;
+        try {
+          for (const [approvalId, approval] of [...approvalCalls]) {
+            if (String(approval?.call.callId) !== callId) continue;
+            await options.execution.recordApprovalDecision({
+              call: tracked.call,
+              approvalId: ApprovalId(approvalId),
+              outcome: approvalOutcome,
+              responder: "parent",
+            });
+            approvalCalls.delete(approvalId);
+            automaticApprovals.delete(approvalId);
+            humanApprovalIds.delete(approvalId);
+          }
+          await options.execution.complete({
+            ...tracked.call,
+            definition: tracked.definition,
+            error,
+          });
+        } catch {
+          // An executing tool may store its own result first. The closing
+          // append still validates every call, and a closure that fails there
+          // is repaired by the session owner.
+        }
+        openCallIds.delete(callId);
         humanCallIds.delete(callId);
       }
     },
@@ -1055,8 +1212,22 @@ export function recordedStream(
   mapEvents: (part: unknown) => Promise<readonly AppendSessionEvent[]>,
   onPartPersisted?: (part: unknown) => void,
 ): unknown {
-  const readable = stream as ReadableStream<unknown> | null;
-  if (!readable || typeof readable.pipeThrough !== "function") return stream;
+  return createStreamRecording(sessionId, mapEvents, onPartPersisted).pipe(stream);
+}
+
+/**
+ * Records one provider stream on an ordered side channel. `drain` lets a
+ * closing turn wait until every part already observed is mapped and durable,
+ * so the closure never races a tool call or result still being recorded.
+ */
+export function createStreamRecording(
+  sessionId: string,
+  mapEvents: (part: unknown) => Promise<readonly AppendSessionEvent[]>,
+  onPartPersisted?: (part: unknown) => void,
+): {
+  pipe(stream: unknown): unknown;
+  drain(timeoutMs: number): Promise<void>;
+} {
   let recording = Promise.resolve();
   let persistence = Promise.resolve();
   let persistenceFailure: unknown;
@@ -1130,23 +1301,53 @@ export function recordedStream(
     });
   };
 
-  return readable.pipeThrough(
-    new TransformStream<unknown, unknown>({
-      transform(part, controller) {
-        // Chat owns the provider stream. Trajectory mapping and persistence
-        // observe that stream on an ordered side channel and can never apply
-        // backpressure to the user's visible response.
-        controller.enqueue(part);
-        enqueueRecording(part);
-      },
-      async flush() {
-        await recording;
-        flushChunkBatch();
-        await persistence;
-        if (persistenceFailure !== undefined) throw persistenceFailure;
-      },
-    }),
-  );
+  const settled = async () => {
+    // Recording a part can enqueue more work; wait until both lanes are quiet.
+    for (let observed: Promise<void> | undefined; observed !== recording;) {
+      observed = recording;
+      await observed;
+    }
+    flushChunkBatch();
+    for (let observed: Promise<void> | undefined; observed !== persistence;) {
+      observed = persistence;
+      await observed;
+    }
+  };
+
+  return {
+    pipe(stream) {
+      const readable = stream as ReadableStream<unknown> | null;
+      if (!readable || typeof readable.pipeThrough !== "function") return stream;
+      return readable.pipeThrough(
+        new TransformStream<unknown, unknown>({
+          transform(part, controller) {
+            // Chat owns the provider stream. Trajectory mapping and persistence
+            // observe that stream on an ordered side channel and can never apply
+            // backpressure to the user's visible response.
+            controller.enqueue(part);
+            enqueueRecording(part);
+          },
+          async flush() {
+            await recording;
+            flushChunkBatch();
+            await persistence;
+            if (persistenceFailure !== undefined) throw persistenceFailure;
+          },
+        }),
+      );
+    },
+    async drain(timeoutMs) {
+      let timer: ReturnType<typeof setTimeout> | undefined;
+      try {
+        await Promise.race([
+          settled(),
+          new Promise<void>((resolve) => { timer = setTimeout(resolve, timeoutMs); }),
+        ]);
+      } finally {
+        clearTimeout(timer);
+      }
+    },
+  };
 }
 
 export function describeSessionTools(
@@ -1194,6 +1395,7 @@ export function createProviderTransport(
       });
       const definitions = registry.definitions;
       disclosure.prime(latestUserRequestText(options.messages));
+      disclosure.restore(calledToolNames(options.messages));
       const initialActiveTools = disclosure.activeToolNames();
       let activeTurnHandle: ChatTurnHandle | null = null;
       const modelId = effectiveModelId();
@@ -1308,8 +1510,28 @@ export function createProviderTransport(
           ...(resumedSuspension ? { initialCalls: resumedSuspension.calls } : {}),
         },
       );
+      const stepPersistence = createSessionStepPersistenceGate();
+      const recording = createStreamRecording(
+        sessionId,
+        streamRecorder.record,
+        stepPersistence.partPersisted,
+      );
+      const toolErrors = createToolErrorClassifier();
+      // Every closure first lets in-flight tool records land, then gives each
+      // call still without a result a terminal one: a step can only close once
+      // all of its calls are resolved. Human-input calls stay open when the
+      // closure suspends the turn for them.
+      const settleOpenToolCalls = async (
+        error: AiToolExecutionError,
+        approvalOutcome: "cancelled" | "unavailable",
+        exceptWaiting: boolean,
+      ): Promise<void> => {
+        await recording.drain(CLOSURE_SETTLE_TIMEOUT_MS);
+        await streamRecorder.terminateUnresolved(error, approvalOutcome, { exceptWaiting });
+      };
       const owningChat = chats.get(sessionId);
       const turnClosure = sessionTurnClosures.open(sessionId, async () => {
+        await settleOpenToolCalls(STOPPED_TOOL_ERROR, "cancelled", true);
         const lastMessage = owningChat?.messages.at(-1);
         const responseMessage = lastMessage?.role === "assistant"
           ? lastMessage
@@ -1328,26 +1550,31 @@ export function createProviderTransport(
         });
         if (settled === "suspended") await cancelOwnedSuspension(sessionId);
       });
-      const stepPersistence = createSessionStepPersistenceGate();
       const closeFailedTurn = async (error: unknown): Promise<void> => {
         await turnClosure.close(async () => {
           if (isInferenceRequestFailure(error) && error.cancelled) {
-            await streamRecorder.terminateWaiting({
+            const cancelled: AiToolExecutionError = {
               name: "ToolExecutionCancelled",
               code: "USER_CANCELLED",
               message: "The provider request was cancelled while a tool awaited input",
-            }, "cancelled");
+            };
+            await recording.drain(CLOSURE_SETTLE_TIMEOUT_MS);
+            await streamRecorder.terminateWaiting(cancelled, "cancelled");
+            await streamRecorder.terminateUnresolved(cancelled, "cancelled");
             await abortChatTurn({ sessionId, handle: activeTurnHandle! });
             return;
           }
           const detail = error && typeof error === "object"
             ? error as { name?: unknown; code?: unknown; message?: unknown }
             : {};
-          await streamRecorder.terminateWaiting({
+          const failed: AiToolExecutionError = {
             name: typeof detail.name === "string" ? detail.name : "ProviderError",
             code: typeof detail.code === "string" ? detail.code : "PROVIDER_FAILED",
             message: typeof detail.message === "string" ? detail.message : String(error),
-          }, "unavailable");
+          };
+          await recording.drain(CLOSURE_SETTLE_TIMEOUT_MS);
+          await streamRecorder.terminateWaiting(failed, "unavailable");
+          await streamRecorder.terminateUnresolved(failed, "unavailable");
           await failChatTurn({
             sessionId,
             handle: activeTurnHandle!,
@@ -1386,6 +1613,11 @@ export function createProviderTransport(
               maxSteps: 100,
               abortSignal: signal,
               async prepareStep({ steps, stepNumber, instructions, messages }) {
+                // A tool the model just tried to call stays available for its
+                // retry instead of failing as unavailable a second time.
+                disclosure.restore(steps.flatMap((step) =>
+                  step.toolCalls?.map((call) => call.toolName) ?? []
+                ));
                 const skill = activeSkillFromSteps(steps);
                 const selectedActiveTools = disclosure.activeToolNames(
                   skill?.allowedGroups,
@@ -1477,11 +1709,9 @@ export function createProviderTransport(
         throw error;
       }
       return toUIMessageStream({
-        stream: recordedStream(
-          sessionId,
-          result.stream,
-          streamRecorder.record,
-          stepPersistence.partPersisted,
+        stream: observedStream(
+          recording.pipe(result.stream),
+          toolErrors.observe,
         ) as never,
         tools: tools as never,
         originalMessages: options.messages,
@@ -1490,6 +1720,11 @@ export function createProviderTransport(
           part.type === "finish" ? { modelId } : undefined,
         async onEnd({ responseMessage, finishReason, isAborted }) {
           await turnClosure.close(async () => {
+            await settleOpenToolCalls(
+              isAborted ? STOPPED_TOOL_ERROR : INTERRUPTED_TOOL_ERROR,
+              isAborted ? "cancelled" : "unavailable",
+              true,
+            );
             const settled = await settleChatProviderEnd({
               sessionId,
               handle: activeTurnHandle!,
@@ -1505,6 +1740,9 @@ export function createProviderTransport(
         },
         onError(error) {
           const detail = (error ?? {}) as ErrorDetail;
+          // A failed or invalid tool call is an ordinary result for the model's
+          // next step. Only a fatal stream error may close the provider turn.
+          if (toolErrors.isToolError(error)) return buildErrorMessage(error, detail);
           noteStreamError(sessionId, error, detail);
           const message = buildErrorMessage(error, detail);
           useChatStore.getState().patchAgentMeta({ status: "error", error: message });
